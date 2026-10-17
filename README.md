@@ -12,11 +12,12 @@ How can employee data be analysed to understand attrition patterns, identify fac
 
 ## Research Questions
 
-1. What is the overall employee attrition rate, and how does it vary across departments, job roles and employee demographics?
-2. How are job satisfaction, work-life balance and overtime associated with employee attrition?
-3. What relationships exist between employee compensation, length of service, career progression and attrition?
-4. Which employee-related factors are the strongest predictors of attrition?
-5. How can machine learning and Power BI be used to predict attrition risk and support proactive workforce planning?
+1.	What is the overall employee attrition rate, and which departments, job roles and employee groups experience higher attrition?
+2.	How are job satisfaction, work-life balance and overtime associated with employee attrition?
+3.	How do compensation, length of service and career progression relate to employee attrition?
+4.	Which factors are the strongest predictors of employee attrition, and how accurately can machine learning identify employees at higher risk?
+5.	What targeted retention strategies can be recommended based on the analytical findings and predictive insights to help reduce employee attrition?
+
 
 ## Tools and Technologies
 
