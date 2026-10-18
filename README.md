@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="IBM%20HR%20Attrition%20Analytics%20Emblem.png" alt="IBM HR Attrition Analytics Logo" width="450">
+</p>
+
+
 
 # Employee Attrition Analytics & Prediction
 
