@@ -8,15 +8,20 @@ The findings aim to support data-driven workforce planning and employee retentio
 
 ## Problem Statement
 
-How can employee data be analysed to understand attrition patterns, identify factors associated with employee turnover, and predict attrition risk to support proactive workforce planning?
+How can employee data be analysed to identify key factors associated with employee attrition, predict employees' likelihood of leaving, and support targeted retention strategies and proactive workforce planning to reduce attrition and minimise staffing gaps?
 
 ## Research Questions
 
-1.	What is the overall employee attrition rate, and which departments, job roles and employee groups experience higher attrition?
-2.	How are job satisfaction, work-life balance and overtime associated with employee attrition?
-3.	How do compensation, length of service and career progression relate to employee attrition?
-4.	Which factors are the strongest predictors of employee attrition, and how accurately can machine learning identify employees at higher risk?
-5.	What targeted retention strategies can be recommended based on the analytical findings and predictive insights to help reduce employee attrition?
+1.	Analyse Employee Attrition Patterns 
+    To examine overall attrition rates and identify trends across employee demographics, departments, job roles and other relevant characteristics.
+2.	Identify Key Attrition Factors 
+    To determine individual factors and combinations of factors associated with higher employee attrition.
+3.	Predict Employee Attrition Risk 
+    To develop a predictive model that estimates employees' likelihood of leaving and identifies higher-risk employee groups.
+4.	Recommend Targeted Retention Strategies 
+    To propose practical, data-driven interventions addressing key attrition factors within the organisation's control, with the aim of reducing employee turnover.
+5.	Support Proactive Workforce Planning 
+    To identify potential staffing risks and recommend advance recruitment planning measures to minimise vacancy gaps where attrition may be difficult to prevent.
 
 
 ## Tools and Technologies
