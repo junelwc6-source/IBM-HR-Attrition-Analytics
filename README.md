@@ -2,11 +2,7 @@
   <img src="IBM%20HR%20Attrition%20Analytics%20Emblem.png" alt="IBM HR Attrition Analytics Logo" width="450">
 </p>
 
-# Employee Attrition Analytics & Prediction
-
-### A Data-Driven Approach to Employee Retention and Workforce Planning
-
-**Capstone Project | Associate Data Analyst Programme**
+# IBM HR Analytics & Attrition Dashboard
 
 ## 1. Project Overview
 
@@ -18,17 +14,7 @@ The main objective is to **support HR in reducing employee attrition**, while en
 
 ## 2. Business Problem
 
-Employee attrition can create manpower gaps, increase recruitment costs and affect organisational performance.
-
-When HR relies mainly on historical attrition figures, retention and recruitment decisions may become reactive.
-
-This project explores how descriptive and predictive analytics can help HR:
-
-- Understand employee attrition patterns.
-- Identify factors associated with employee departures.
-- Identify employee groups with higher predicted attrition risk.
-- Prioritise potential retention initiatives.
-- Support proactive workforce planning.
+Employee attrition is a major challenge faced by organizations. Understanding the key factors that drive employees to leave can help businesses reduce turnover and enhance workforce stability.
 
 ## 3. Project Objectives
 
