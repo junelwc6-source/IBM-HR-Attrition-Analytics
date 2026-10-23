@@ -18,11 +18,11 @@ Employee attrition is a major challenge faced by organizations. Understanding th
 
 ## 3. Project Objectives
 
-1. Analyse overall and departmental employee attrition patterns.
-2. Identify individual and combined factors associated with employee attrition.
-3. Develop and evaluate machine learning models to predict employee attrition.
-4. Classify employees into relative attrition risk categories.
-5. Recommend practical HR strategies to investigate and address retention concerns.
+1. Analyse overall employee attrition patterns, departmental differences and the relationship between overtime and attrition.
+2. Develop and compare machine learning models to predict employee attrition.
+3. Evaluate the selected predictive model, assess probability calibration and identify important attrition predictors.
+4. Assess predicted employee attrition risk and identify higher-risk employee groups across departments.
+5. Propose practical HR retention strategies and an implementation plan based on the analytical findings.
 
 ## 4. Dataset Overview
 
