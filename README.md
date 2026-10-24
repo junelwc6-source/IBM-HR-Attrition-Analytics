@@ -14,7 +14,7 @@ The main objective is to **support HR in reducing employee attrition**, while en
 
 ## 2. Business Problem
 
-Employee attrition is a major challenge faced by organizations. Understanding the key factors that drive employees to leave can help businesses reduce turnover and enhance workforce stability.
+How can employee data be analysed to identify key factors associated with employee attrition, predict employees' likelihood of leaving, and support targeted retention strategies and proactive workforce planning to reduce attrition and minimise staffing gaps?
 
 ## 3. Project Objectives
 
