@@ -93,17 +93,14 @@ A stratified split was used to preserve the proportion of employees who left and
 
 ## 7. Descriptive Analytics
 
-The descriptive analysis examined overall attrition and departmental patterns across key employee characteristics, including:
+The descriptive analysis examined overall employee attrition patterns, departmental differences and factors associated with employee attrition.
 
-1. Age
-2. Job Role
-3. Monthly Income
-4. Total Working Years
-5. Years Since Last Promotion
-6. Performance Rating
-7. Job Satisfaction
-8. Work-Life Balance
-9. Overtime
+The analysis covered:
+
+- **Overall attrition:** Total employees, employees who left and overall attrition rate.
+- **Departmental attrition:** Comparison of attrition rates across Sales, Human Resources and Research & Development.
+- **Overtime and attrition:** Examination of the relationship between overtime and employee attrition across departments.
+- **Employee characteristics:** Analysis of attrition patterns by age, job role, monthly income, total working years, years since last promotion, performance rating, job satisfaction and work-life balance.
 
 ### Departmental Attrition
 
@@ -139,7 +136,7 @@ Both models were evaluated using five-fold stratified cross-validation on the tr
 | Recall | 0.753 | 0.463 |
 | F1-Score | 0.495 | 0.496 |
 
-**Logistic Regression was selected** because it achieved higher ROC AUC and substantially higher recall, making it more suitable for identifying employees at potential risk of leaving.
+**Logistic Regression was selected** because it achieved higher ROC AUC (0.831 vs 0.808) and substantially higher recall (0.753 vs 0.463). Although Random Forest achieved a marginally higher F1-score, Logistic Regression was considered more suitable for this project because identifying employees at potential risk of leaving is a key priority for proactive HR retention planning.
 
 ### Held-Out Test Performance
 
@@ -171,9 +168,9 @@ Sigmoid probability calibration was applied using cross-validation on the traini
 | Mean Calibrated Predicted Probability | 16.2% |
 | Actual Training Attrition Rate | 16.2% |
 
-The calibrated model achieved a lower cross-validated Brier Score, indicating improved probability prediction quality.
+The calibrated model achieved a lower cross-validated Brier Score (0.098 compared with 0.160), indicating improved probability prediction quality. The mean calibrated predicted probability (16.2%) was also aligned with the actual training attrition rate (16.2%).
 
-Calibration was conducted using training data, while the held-out test dataset was retained for subsequent risk analysis.
+Calibration was performed using the training dataset, while the held-out test dataset was kept separate for subsequent evaluation and risk analysis.
 
 ### Important Predictive Factors
 
@@ -248,7 +245,7 @@ Job satisfaction was also examined, although differences across risk groups were
 
 These patterns partly reflect characteristics used by the prediction model and should not be interpreted as independent evidence of causation.
 
-The held-out test dataset was used to evaluate predicted risk categories against actual attrition outcomes. Separately, the calibrated model was applied to the 1,233 employees who stayed to demonstrate prospective risk assessment in the Power BI dashboard. These two analyses serve different purposes and should not be interpreted as the same population.
+The held-out test dataset was used to evaluate predicted risk categories against actual attrition outcomes. Separately, the calibrated model was applied to the 1,233 employees who stayed to demonstrate how predictive risk assessment could support HR retention planning. These analyses serve different purposes and represent different employee populations.
 
 ## 10. HR Retention Recommendations
 
@@ -299,9 +296,9 @@ Predictive risk scores should support workforce-level analysis and voluntary emp
 
 **Status: In progress**
 
-An interactive Power BI dashboard was developed to present the descriptive and predictive analytics findings and support HR retention planning.
+An interactive Power BI dashboard will be developed to present the descriptive and predictive analytics findings and support HR retention planning.
 
-The dashboard consists of four pages:
+The dashboard would consist of four pages:
 
 ### Page 1: Attrition Overview
 
