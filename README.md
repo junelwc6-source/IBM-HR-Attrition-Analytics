@@ -38,6 +38,15 @@ The project uses five related CSV files:
 
 The datasets were merged using `EmployeeNumber` as the common identifier.
 
+### Prepared Datasets for Power BI
+
+Two prepared datasets are available in this GitHub repository:
+
+- **IBM_HR_Attrition_Cleaned.csv:** The cleaned historical dataset containing all 1,470 employee records, used for descriptive analytics.
+- **HR_Attrition_Predictive_Risk.csv:** The predictive risk dataset containing 1,233 employees who stayed, including estimated attrition probabilities and risk categories.
+
+These datasets are imported directly into Power BI to support the interactive dashboard.
+
 ### Dataset Summary
 
 | Indicator | Result |
@@ -239,6 +248,8 @@ Job satisfaction was also examined, although differences across risk groups were
 
 These patterns partly reflect characteristics used by the prediction model and should not be interpreted as independent evidence of causation.
 
+The held-out test dataset was used to evaluate predicted risk categories against actual attrition outcomes. Separately, the calibrated model was applied to the 1,233 employees who stayed to demonstrate prospective risk assessment in the Power BI dashboard. These two analyses serve different purposes and should not be interpreted as the same population.
+
 ## 10. HR Retention Recommendations
 
 Based on the descriptive and predictive findings, five retention strategies are proposed for further investigation and pilot implementation.
@@ -286,19 +297,50 @@ Predictive risk scores should support workforce-level analysis and voluntary emp
 
 ## 12. Interactive Power BI Dashboard
 
-**Status: Planned**
+**Status: In progress**
 
-An interactive Power BI dashboard will be developed to present descriptive and predictive analytics findings.
+An interactive Power BI dashboard was developed to present the descriptive and predictive analytics findings and support HR retention planning.
 
-The dashboard is intended to support:
+The dashboard consists of four pages:
 
-- Overall HR attrition monitoring.
-- Departmental and employee-group comparisons.
-- Exploration of attrition-related factors.
-- Review of predicted employee risk categories.
-- HR management discussions and workforce planning.
+### Page 1: Attrition Overview
 
-Dashboard screenshots and implementation details will be added after development.
+- Overall employee attrition rate and employee counts.
+- Departmental attrition comparisons.
+- Attrition patterns across employee groups.
+
+### Page 2: Attrition Drivers
+
+- Analysis of employee characteristics associated with attrition.
+- Comparisons across overtime, income, job roles and other relevant factors.
+- Interactive filters to explore attrition patterns.
+
+### Page 3: Predictive Risk
+
+- Distribution of predicted attrition risk among employees who stayed.
+- Low, Medium and High Risk segmentation.
+- Departmental comparisons to identify employee groups requiring further investigation.
+
+### Page 4: Employee Risk Details
+
+- Employee-level predictive risk information.
+- Predicted attrition probabilities and risk categories.
+- Interactive filtering to support further analysis.
+
+### Data Integration
+
+The Power BI dashboard imports two datasets directly from this GitHub repository:
+
+| Power BI Dataset | GitHub Source |
+|---|---|
+| HR_Attrition_Historical | IBM_HR_Attrition_Cleaned.csv |
+| HR_Attrition_Predictive_Risk | HR_Attrition_Predictive_Risk.csv |
+
+The historical dataset contains 1,470 employee records. The predictive risk dataset contains 1,233 employees who stayed, with model-generated attrition risk estimates.
+
+The dashboard complements the Python analysis by enabling interactive exploration of employee attrition patterns and predicted risk.
+
+Predictive risk scores are intended to support HR investigation and retention planning, not to determine individual employment decisions.
 
 ## 13. Project Limitations
 
