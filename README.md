@@ -59,7 +59,7 @@ The datasets were merged using `EmployeeNumber` as the common identifier.
 | Scikit-learn | Machine learning, calibration and model evaluation |
 | Google Colab | Python development environment |
 | GitHub | Project documentation and version control |
-| Power BI | Interactive HR analytics dashboard (planned) |
+| Power BI | Interactive HR analytics dashboard |
 
 ## 6. Data Preparation
 
