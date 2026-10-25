@@ -342,7 +342,9 @@ An interactive **single-page Power BI dashboard** brings together historical att
 ### Power BI Dashboard Screenshot
 
 <a href="HR_Attrition_Dashboard.png">
-  <img src="HR_Attrition_Dashboard.png" alt="Employee Attrition and Predictive Risk Power BI Dashboard" width="100%">
+  <img src="HR_Attrition_Dashboard.png"
+       alt="Employee Attrition and Predictive Risk Dashboard"
+       width="100%">
 </a>
 
 *Click the dashboard image to open the full-size screenshot.*
