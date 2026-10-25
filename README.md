@@ -18,11 +18,13 @@ How can employee data be analysed to identify key factors associated with employ
 
 ## 3. Project Objectives
 
-1. Analyse overall employee attrition patterns, departmental differences and the relationship between overtime and attrition.
+## 3. Project Objectives
+
+1. Analyse employee attrition patterns across departments, job roles and key employee characteristics to identify groups with higher attrition rates.
 2. Develop and compare machine learning models to predict employee attrition.
-3. Evaluate the selected predictive model, assess probability calibration and identify important attrition predictors.
-4. Assess predicted employee attrition risk and identify higher-risk employee groups across departments.
-5. Propose practical HR retention strategies and an implementation plan based on the analytical findings.
+3. Evaluate the selected predictive model, assess probability calibration and identify important predictors of attrition.
+4. Assess predicted employee attrition risk and develop an interactive Power BI dashboard to support workforce-level analysis and employee risk investigation.
+5. Recommend practical HR retention strategies and an implementation plan to help reduce attrition and support proactive workforce planning.
 
 ## 4. Dataset Overview
 
@@ -294,8 +296,32 @@ Predictive risk scores should support workforce-level analysis and voluntary emp
 
 ## 12. Interactive Power BI Dashboard
 
-**Status: In progress**
+An interactive Power BI dashboard was developed to bring together historical employee attrition analysis and predictive risk assessment on a single page.
 
+The dashboard contains three main sections:
+
+### Department Attrition Overview
+
+- Displays employee headcount and attrition proportions across Sales, Human Resources and Research & Development.
+- Allows HR to compare workforce size and historical attrition across departments.
+
+### Historical Attrition Analysis
+
+- Provides key workforce indicators, including total employees, employees who left, overall attrition rate and average monthly income.
+- Analyses attrition rates by job role, overtime, total working years, years since last promotion and income group.
+- Includes interactive Department, Gender and Age Group filters to support further analysis.
+- Uses the overall company attrition rate as a reference for comparison.
+
+### Predictive Risk Analysis
+
+- Presents the distribution of Low, Medium and High predicted attrition risk among the 1,233 employees who stayed.
+- Identifies 134 employees classified as High Risk in the full-company view.
+- Includes an Employee Risk Details table showing employee number, department, risk level and predicted attrition probability.
+- Provides Department, Employee Number and Risk Level filters to support HR investigation at employee level.
+
+The dashboard enables HR to move from workforce-level trends to individual predicted risk estimates while retaining the overall business context.
+
+**Interpretation:** Predicted risk indicates a model-estimated likelihood of attrition, not a confirmed future departure. The results should support further investigation and employee retention planning rather than automatic employment decisions.
 
 ## 13. Project Limitations
 
