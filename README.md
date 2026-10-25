@@ -322,6 +322,7 @@ The dashboard contains three main sections:
 The dashboard enables HR to move from workforce-level trends to individual predicted risk estimates while retaining the overall business context.
 
 **Interpretation:** Predicted risk indicates a model-estimated likelihood of attrition, not a confirmed future departure. The results should support further investigation and employee retention planning rather than automatic employment decisions.
+<img width="934" height="744" alt="image" src="https://github.com/user-attachments/assets/639de770-39c4-4999-8642-b6d81f17a0ef" />
 
 ## 13. Project Limitations
 
