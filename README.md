@@ -48,7 +48,7 @@ The datasets were merged using `EmployeeNumber` as the common identifier.
 
 ### Prepared Datasets for Power BI
 
-Two prepared datasets are available in this GitHub repository:
+Three prepared datasets are available in this GitHub repository:
 
 - **IBM_HR_Attrition_Cleaned.csv:** The cleaned historical dataset containing all 1,470 employee records, used for descriptive analytics.
 - **HR_Attrition_Predictive_Risk.csv:** The predictive risk dataset containing 1,233 employees who stayed, including estimated attrition probabilities and risk categories.
