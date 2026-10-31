@@ -365,7 +365,17 @@ The employee details table displays each employee's precomputed predicted attrit
 
 ### Power BI Dashboard Screenshot
 
-[View Power BI Dashboard Screenshot](HR_Attrition_Dashboard.png)
+### Power BI Dashboard Screenshots
+
+**1. HR Employee Attrition Dashboard**
+
+![HR Employee Attrition Dashboard](HR_Attrition_Dashboard.png)
+
+**2. Employee Risk Details – Predictive Risk Exploration**
+
+![Employee Risk Details](HR_Employee_Risk_Details.png)
+
+The Employee Risk Details page includes 10 collapsible predictor filters, allowing users to explore employee characteristics alongside their precomputed attrition probabilities and risk levels.
 
 ### How HR Can Use the Dashboard
 
