@@ -10,7 +10,8 @@
 > 
 ### 🌐 Live Interactive Dashboard
 
-[Launch the HR Employee Attrition Analytics Dashboard](PASTE_YOUR_STREAMLIT_URL_HERE)
+
+[Launch the HR Employee Attrition Analytics Dashboard](https://ibm-hr-attrition-analytics-h9hbananbldwcmri8d6uti.streamlit.app/)
 
 Explore historical attrition patterns, employee predictive risk and model insights through the interactive Streamlit application.
 
