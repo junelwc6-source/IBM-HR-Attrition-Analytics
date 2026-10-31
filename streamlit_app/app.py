@@ -406,7 +406,7 @@ def predictor_ranking_chart():
         .str.replace(r"(?<!^)(?=[A-Z])", " ", regex=True)
     )
 
-    ranking = ranking.head(10).iloc[::-1]
+    ranking = ranking.iloc[::-1]
 
     fig = go.Figure(go.Bar(
         x=ranking["Ranking Score"],
@@ -423,7 +423,7 @@ def predictor_ranking_chart():
             text="Ranking by Predictor",
             font=dict(size=16), x=0
         ),
-        height=420,
+        height=680,
         showlegend=False,
         paper_bgcolor="white",
         plot_bgcolor="white",
@@ -493,12 +493,33 @@ def live_prediction_section():
     )
 
     with st.form("live_attrition_prediction"):
-        input_values = {}
-        cols = st.columns(3)
+    input_values = {}
 
-        for i, feature in enumerate(features):
-            with cols[i % 3]:
-                source = risk[feature]
+    top_10 = [
+        "OverTime",
+        "StockOptionLevel",
+        "YearsSinceLastPromotion",
+        "NumCompaniesWorked",
+        "TotalWorkingYears",
+        "BusinessTravel",
+        "JobSatisfaction",
+        "JobInvolvement",
+        "JobRole",
+        "TrainingTimesLastYear"
+    ]
+
+    main_features = [f for f in top_10 if f in features]
+    other_features = [f for f in features if f not in main_features]
+
+    st.markdown("**Top 10 Predictors**")
+
+    # All predictors remain available to the trained model
+    ordered_features = main_features + other_features
+    cols = st.columns(3)
+
+    for i, feature in enumerate(ordered_features):
+        with cols[i % 3]:
+            source = risk[feature]
 
                 if feature in categorical_features:
                     options = sorted(
