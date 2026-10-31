@@ -3,7 +3,6 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from pathlib import Path
-import joblib
 
 # ==================================================
 # PAGE CONFIGURATION
@@ -63,22 +62,6 @@ h2, h3 {
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load trained model and supporting files for live prediction
-
-MODEL_DIR = Path(__file__).resolve().parent
-
-@st.cache_resource
-def load_prediction_model():
-    model = joblib.load(
-        MODEL_DIR / "calibrated_attrition_model.joblib"
-    )
-    features = joblib.load(
-        MODEL_DIR / "model_features.joblib"
-    )
-    thresholds = joblib.load(
-        MODEL_DIR / "risk_thresholds.joblib"
-    )
-    return model, features, thresholds
 
 @st.cache_data
 def load_data():
