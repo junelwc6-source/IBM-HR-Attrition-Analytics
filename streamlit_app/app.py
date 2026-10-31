@@ -100,7 +100,6 @@ risk["Predicted_Probability"] = pd.to_numeric(
     errors="coerce"
 )
 
-# Use consistent employee identifiers for joining
 historical["EmployeeNumber"] = pd.to_numeric(
     historical["EmployeeNumber"],
     errors="coerce"
@@ -110,6 +109,91 @@ risk["EmployeeNumber"] = pd.to_numeric(
     risk["EmployeeNumber"],
     errors="coerce"
 )
+
+# ==================================================
+# PREDICTOR DEFINITIONS
+# ==================================================
+
+# Predictor columns are displayed in the same order
+# as the Power BI ranking, where available.
+#
+# The supplied Power BI screenshot contains 21
+# visible predictor names. The actual predictive
+# CSV is used to identify the columns that exist.
+
+PREDICTOR_COLUMNS = [
+    "OverTime",
+    "StockOptionLevel",
+    "YearsSinceLastPromotion",
+    "NumCompaniesWorked",
+    "TotalWorkingYears",
+    "BusinessTravel",
+    "JobSatisfaction",
+    "JobInvolvement",
+    "JobRole",
+    "TrainingTimesLastYear",
+    "EnvironmentSatisfaction",
+    "YearsInCurrentRole",
+    "MonthlyIncome",
+    "YearsAtCompany",
+    "RelationshipSatisfaction",
+    "JobLevel",
+    "YearsWithCurrManager",
+    "DistanceFromHome",
+    "PercentSalaryHike",
+    "PerformanceRating",
+    "WorkLifeBalance"
+]
+
+# These are display values transcribed from the
+# Power BI ranking screenshot, not recalculated
+# model importances.
+
+POWERBI_RANKING = [
+    ("OverTime", 100),
+    ("StockOptionLevel", 23),
+    ("YearsSinceLastPromotion", 21),
+    ("NumCompaniesWorked", 21),
+    ("TotalWorkingYears", 20),
+    ("BusinessTravel", 17),
+    ("JobSatisfaction", 13),
+    ("JobInvolvement", 13),
+    ("JobRole", 11),
+    ("TrainingTimesLastYear", 10),
+    ("EnvironmentSatisfaction", 9),
+    ("YearsInCurrentRole", 9),
+    ("MonthlyIncome", 7),
+    ("YearsAtCompany", 6),
+    ("RelationshipSatisfaction", 5),
+    ("JobLevel", 4),
+    ("YearsWithCurrManager", 4),
+    ("DistanceFromHome", 3),
+    ("PercentSalaryHike", 2),
+    ("PerformanceRating", 0),
+    ("WorkLifeBalance", 0)
+]
+
+# Additional original columns, if present in
+# the predictive CSV, are included automatically
+# rather than omitted or given invented values.
+
+EXCLUDED_DISPLAY_COLUMNS = {
+    "Attrition",
+    "Attrition_Flag",
+    "Predicted_Probability",
+    "Risk_Level",
+    "EmployeeNumber",
+    "Department",
+    "AgeGroup",
+    "Age_Group",
+    "IncomeGroup",
+    "SatisfactionGroup",
+    "PromotionBand",
+    "WorkingYearsBand",
+    "WorkingYearsGroup",
+    "Prediction",
+    "Predicted_Attrition"
+}
 
 # ==================================================
 # REUSABLE CHART FUNCTIONS
@@ -158,13 +242,13 @@ def attrition_chart(
             cliponaxis=False
         ))
 
-        max_rate = (
+        maximum = (
             summary["Rate"].max()
             if not summary.empty else 0
         )
 
         fig.update_xaxes(
-            range=[0, max(45, max_rate * 1.25)]
+            range=[0, max(45, maximum * 1.25)]
         )
 
         if benchmark is not None:
@@ -187,13 +271,13 @@ def attrition_chart(
             cliponaxis=False
         ))
 
-        max_rate = (
+        maximum = (
             summary["Rate"].max()
             if not summary.empty else 0
         )
 
         fig.update_yaxes(
-            range=[0, max(35, max_rate * 1.2)]
+            range=[0, max(35, maximum * 1.2)]
         )
 
         if benchmark is not None:
@@ -338,6 +422,221 @@ def employee_table(data, show_all=False):
 
 
 # ==================================================
+# FULL EMPLOYEE RISK DETAILS TABLE
+# ==================================================
+
+def full_employee_risk_table(data):
+
+    primary_columns = [
+        "EmployeeNumber",
+        "Department",
+        "Risk_Level",
+        "Predicted_Probability"
+    ]
+
+    available_predictors = [
+        column
+        for column in PREDICTOR_COLUMNS
+        if column in data.columns
+    ]
+
+    # Include other source columns after the
+    # recognised predictors. This prevents
+    # original attributes from being lost.
+
+    additional_columns = [
+        column
+        for column in data.columns
+        if column not in primary_columns
+        and column not in available_predictors
+        and column not in EXCLUDED_DISPLAY_COLUMNS
+    ]
+
+    display_columns = (
+        primary_columns
+        + available_predictors
+        + additional_columns
+    )
+
+    table = data[display_columns].copy()
+
+    table["Predicted_Probability"] = (
+        table["Predicted_Probability"]
+        .map(
+            lambda value: f"{value:.1%}"
+            if pd.notna(value) else ""
+        )
+    )
+
+    table["EmployeeNumber"] = (
+        table["EmployeeNumber"].astype("Int64")
+    )
+
+    rename_columns = {
+        "EmployeeNumber": "Employee Number",
+        "Risk_Level": "Risk Level",
+        "Predicted_Probability": "Predicted Probability",
+        "OverTime": "Overtime",
+        "StockOptionLevel": "Stock Option Level",
+        "YearsSinceLastPromotion": "Years Since Last Promotion",
+        "NumCompaniesWorked": "Num Companies Worked",
+        "TotalWorkingYears": "Total Working Years",
+        "BusinessTravel": "Business Travel",
+        "JobSatisfaction": "Job Satisfaction",
+        "JobInvolvement": "Job Involvement",
+        "TrainingTimesLastYear": "Training Times Last Year",
+        "EnvironmentSatisfaction": "Environment Satisfaction",
+        "YearsInCurrentRole": "Years In Current Role",
+        "MonthlyIncome": "Monthly Income",
+        "YearsAtCompany": "Years At Company",
+        "RelationshipSatisfaction": "Relationship Satisfaction",
+        "JobLevel": "Job Level",
+        "YearsWithCurrManager": "Years With Curr Manager",
+        "DistanceFromHome": "Distance From Home",
+        "PercentSalaryHike": "Percent Salary Hike",
+        "PerformanceRating": "Performance Rating",
+        "WorkLifeBalance": "Work Life Balance"
+    }
+
+    table = table.rename(columns=rename_columns)
+
+    # Colour-code risk categories in the table.
+
+    def colour_risk(value):
+        if value == "High":
+            return (
+                "background-color: #F5B8B8;"
+                "color: #6A1010;"
+            )
+        elif value == "Medium":
+            return (
+                "background-color: #F9E59A;"
+                "color: #654D00;"
+            )
+        elif value == "Low":
+            return (
+                "background-color: #BDEBC1;"
+                "color: #175B20;"
+            )
+        return ""
+
+    styled_table = table.style.map(
+        colour_risk,
+        subset=["Risk Level"]
+    )
+
+    st.dataframe(
+        styled_table,
+        use_container_width=True,
+        hide_index=True,
+        height=540,
+        row_height=30
+    )
+
+    st.caption(
+        "Scroll horizontally to view additional "
+        "employee predictors. Risk levels are "
+        "colour-coded: High = Red, Medium = Yellow, "
+        "Low = Green."
+    )
+
+    return table
+
+
+# ==================================================
+# PREDICTOR RANKING CHART
+# ==================================================
+
+def predictor_ranking_chart():
+
+    ranking = pd.DataFrame(
+        POWERBI_RANKING,
+        columns=["Predictor", "Ranking Score"]
+    )
+
+    ranking["Display Name"] = [
+        "OverTime",
+        "Stock Option Level",
+        "Years Since Last Promotion",
+        "Num Companies Worked",
+        "Total Working Years",
+        "Business Travel",
+        "Job Satisfaction",
+        "Job Involvement",
+        "Job Role",
+        "Training Times Last Year",
+        "Environment Satisfaction",
+        "Years In Current Role",
+        "Monthly Income",
+        "Years At Company",
+        "Relationship Satisfaction",
+        "Job Level",
+        "Years With Curr Manager",
+        "Distance From Home",
+        "Percent Salary Hike",
+        "Performance Rating",
+        "Work Life Balance"
+    ]
+
+    ranking = ranking.iloc[::-1]
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Bar(
+        x=ranking["Ranking Score"],
+        y=ranking["Display Name"],
+        orientation="h",
+        marker_color="#EF8B61",
+        text=ranking["Ranking Score"],
+        textposition="outside",
+        cliponaxis=False,
+        hovertemplate=(
+            "%{y}<br>"
+            "Power BI ranking value: %{x}"
+            "<extra></extra>"
+        )
+    ))
+
+    fig.update_layout(
+        title=dict(
+            text="Ranking by Predictor",
+            font=dict(size=16),
+            x=0
+        ),
+        height=680,
+        showlegend=False,
+        paper_bgcolor="white",
+        plot_bgcolor="white",
+        margin=dict(
+            l=15,
+            r=45,
+            t=45,
+            b=35
+        ),
+        font=dict(size=11),
+        bargap=0.35
+    )
+
+    fig.update_xaxes(
+        range=[0, 110],
+        title="Power BI ranking value",
+        showgrid=True,
+        gridcolor="#E8EBF0"
+    )
+
+    fig.update_yaxes(
+        title=None,
+        automargin=True
+    )
+
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        config={"displayModeBar": False}
+    )
+
+
+# ==================================================
 # NAVIGATION
 # ==================================================
 
@@ -366,14 +665,12 @@ if page == "Integrated Dashboard":
         "EMPLOYEE ATTRITION & PREDICTIVE RISK DASHBOARD"
     )
 
-    # ----------------------------------------------
-    # SHARED FILTERS
-    # ----------------------------------------------
-
     st.caption(
         "Department, Gender and Age Group filters "
         "apply to both historical and predictive analysis."
     )
+
+    # SHARED FILTERS
 
     f1, f2, f3 = st.columns(3)
 
@@ -425,10 +722,6 @@ if page == "Integrated Dashboard":
             key="main_age"
         )
 
-    # ----------------------------------------------
-    # FILTER HISTORICAL DATA
-    # ----------------------------------------------
-
     filtered = historical[
         historical["Department"].isin(
             selected_departments
@@ -447,14 +740,7 @@ if page == "Integrated Dashboard":
         )
         st.stop()
 
-    # ----------------------------------------------
-    # FILTER PREDICTIVE DATA USING SAME EMPLOYEES
-    # ----------------------------------------------
-
-    # The predictive dataset contains employees
-    # who stayed and already have risk predictions.
-    # Matching by EmployeeNumber ensures that all
-    # three top filters apply to both sections.
+    # SAME POPULATION FOR PREDICTIVE ANALYSIS
 
     selected_employee_ids = (
         filtered["EmployeeNumber"].dropna().unique()
@@ -466,9 +752,7 @@ if page == "Integrated Dashboard":
         )
     ].copy()
 
-    # ----------------------------------------------
-    # FIVE KPI CARDS
-    # ----------------------------------------------
+    # KPI CARDS
 
     total = len(filtered)
 
@@ -517,10 +801,6 @@ if page == "Integrated Dashboard":
 
     st.divider()
 
-    # ----------------------------------------------
-    # THREE MAIN SECTIONS
-    # ----------------------------------------------
-
     department_panel, history_panel, risk_panel = (
         st.columns(
             [1.05, 3.25, 1.9],
@@ -528,9 +808,9 @@ if page == "Integrated Dashboard":
         )
     )
 
-    # ==============================================
-    # DEPARTMENT ATTRITION OVERVIEW
-    # ==============================================
+    # ----------------------------------------------
+    # DEPARTMENT OVERVIEW
+    # ----------------------------------------------
 
     with department_panel:
 
@@ -577,17 +857,15 @@ if page == "Integrated Dashboard":
             "Teal = Stayed | Grey = Left"
         )
 
-    # ==============================================
+    # ----------------------------------------------
     # HISTORICAL ATTRITION ANALYSIS
-    # ==============================================
+    # ----------------------------------------------
 
     with history_panel:
 
         st.subheader(
             "HISTORICAL ATTRITION ANALYSIS"
         )
-
-        # JOB ROLE
 
         attrition_chart(
             filtered,
@@ -600,8 +878,6 @@ if page == "Integrated Dashboard":
 
         row1_left, row1_right = st.columns(2)
 
-        # OVERTIME
-
         with row1_left:
 
             attrition_chart(
@@ -612,8 +888,6 @@ if page == "Integrated Dashboard":
                 height=205
             )
 
-        # TOTAL WORKING YEARS
-
         with row1_right:
 
             working = filtered.copy()
@@ -621,17 +895,10 @@ if page == "Integrated Dashboard":
             working["WorkingYearsBand"] = pd.cut(
                 working["TotalWorkingYears"],
                 bins=[
-                    -1,
-                    5,
-                    10,
-                    20,
-                    float("inf")
+                    -1, 5, 10, 20, float("inf")
                 ],
                 labels=[
-                    "0–5",
-                    "6–10",
-                    "11–20",
-                    "21+"
+                    "0–5", "6–10", "11–20", "21+"
                 ]
             )
 
@@ -640,10 +907,7 @@ if page == "Integrated Dashboard":
                 "WorkingYearsBand",
                 "Attrition Rate by Total Working Years",
                 order=[
-                    "0–5",
-                    "6–10",
-                    "11–20",
-                    "21+"
+                    "0–5", "6–10", "11–20", "21+"
                 ],
                 benchmark=rate,
                 height=205
@@ -653,8 +917,6 @@ if page == "Integrated Dashboard":
             st.columns(3)
         )
 
-        # PROMOTION BAND
-
         with row2_left:
 
             promotion = filtered.copy()
@@ -662,11 +924,7 @@ if page == "Integrated Dashboard":
             promotion["PromotionBand_PBI"] = pd.cut(
                 promotion["YearsSinceLastPromotion"],
                 bins=[
-                    -1,
-                    1,
-                    3,
-                    7,
-                    float("inf")
+                    -1, 1, 3, 7, float("inf")
                 ],
                 labels=[
                     "0–1 years",
@@ -690,8 +948,6 @@ if page == "Integrated Dashboard":
                 height=210
             )
 
-        # INCOME GROUP
-
         with row2_middle:
 
             attrition_chart(
@@ -707,8 +963,6 @@ if page == "Integrated Dashboard":
                 benchmark=rate,
                 height=210
             )
-
-        # JOB SATISFACTION
 
         with row2_right:
 
@@ -731,9 +985,9 @@ if page == "Integrated Dashboard":
             "historical attrition."
         )
 
-    # ==============================================
+    # ----------------------------------------------
     # PREDICTIVE RISK ANALYSIS
-    # ==============================================
+    # ----------------------------------------------
 
     with risk_panel:
 
@@ -745,10 +999,6 @@ if page == "Integrated Dashboard":
             "Uses the Department, Gender and "
             "Age Group filters above."
         )
-
-        # No separate Risk Department filter.
-        # The predictive population is already
-        # restricted by the shared top filters.
 
         selected_levels = st.multiselect(
             "Risk Level",
@@ -762,9 +1012,6 @@ if page == "Integrated Dashboard":
             placeholder="Search employee ID",
             key="main_employee_search"
         )
-
-        # Risk Level and Employee Number filters
-        # further narrow the shared risk population.
 
         filtered_risk = shared_risk[
             shared_risk["Risk_Level"].isin(
@@ -807,9 +1054,7 @@ if page == "Integrated Dashboard":
                 height=215
             )
 
-        st.subheader(
-            "Employee Risk Details"
-        )
+        st.subheader("Employee Risk Details")
 
         employee_table(filtered_risk)
 
@@ -826,20 +1071,94 @@ if page == "Integrated Dashboard":
 
 elif page == "Employee Risk Explorer":
 
-    st.title("EMPLOYEE RISK EXPLORER")
+    st.title("EMPLOYEE RISK DETAILS")
 
-    st.write(
-        "Explore the existing predictions for "
-        "employees who stayed."
+    st.caption(
+        "Explore employee-level predicted risk "
+        "and the original model predictor fields."
     )
 
-    counts = risk["Risk_Level"].value_counts()
+    # ----------------------------------------------
+    # THREE POWER BI-STYLE FILTERS
+    # ----------------------------------------------
+
+    f1, f2, f3 = st.columns(3)
+
+    with f1:
+
+        departments = sorted(
+            risk["Department"]
+            .dropna()
+            .unique()
+        )
+
+        selected_departments = st.multiselect(
+            "Department",
+            departments,
+            default=departments,
+            key="explorer_department"
+        )
+
+    with f2:
+
+        employee_search = st.text_input(
+            "Employee Number",
+            placeholder="Search employee number",
+            key="explorer_search"
+        )
+
+    with f3:
+
+        selected_levels = st.multiselect(
+            "Risk Level",
+            ["Low", "Medium", "High"],
+            default=["Low", "Medium", "High"],
+            key="explorer_risk"
+        )
+
+    # ----------------------------------------------
+    # FILTER EMPLOYEE DATA
+    # ----------------------------------------------
+
+    filtered_risk = risk[
+        risk["Department"].isin(
+            selected_departments
+        )
+        & risk["Risk_Level"].isin(
+            selected_levels
+        )
+    ].copy()
+
+    if employee_search.strip():
+
+        filtered_risk = filtered_risk[
+            filtered_risk["EmployeeNumber"]
+            .astype("Int64")
+            .astype(str)
+            .str.contains(
+                employee_search.strip(),
+                regex=False
+            )
+        ]
+
+    filtered_risk = filtered_risk.sort_values(
+        "EmployeeNumber"
+    )
+
+    # ----------------------------------------------
+    # SUMMARY METRICS
+    # ----------------------------------------------
+
+    counts = (
+        filtered_risk["Risk_Level"]
+        .value_counts()
+    )
 
     k1, k2, k3, k4 = st.columns(4)
 
     k1.metric(
-        "Employees Assessed",
-        f"{len(risk):,}"
+        "Employees Displayed",
+        f"{len(filtered_risk):,}"
     )
 
     k2.metric(
@@ -857,104 +1176,51 @@ elif page == "Employee Risk Explorer":
         f"{counts.get('High', 0):,}"
     )
 
-    f1, f2 = st.columns(2)
+    st.divider()
 
-    with f1:
+    # ----------------------------------------------
+    # FULL-WIDTH EMPLOYEE RISK TABLE
+    # ----------------------------------------------
 
-        selected_levels = st.multiselect(
-            "Risk Category",
-            ["Low", "Medium", "High"],
-            default=["Low", "Medium", "High"],
-            key="explorer_risk"
-        )
-
-    with f2:
-
-        departments = sorted(
-            risk["Department"]
-            .dropna()
-            .unique()
-        )
-
-        selected_departments = st.multiselect(
-            "Department",
-            departments,
-            default=departments,
-            key="explorer_department"
-        )
-
-    search = st.text_input(
-        "Search Employee Number",
-        key="explorer_search"
+    st.subheader(
+        "Employee Risk Details and Predictors"
     )
 
-    filtered_risk = risk[
-        risk["Risk_Level"].isin(
-            selected_levels
-        )
-        & risk["Department"].isin(
-            selected_departments
-        )
-    ].copy()
-
-    if search.strip():
-
-        filtered_risk = filtered_risk[
-            filtered_risk["EmployeeNumber"]
-            .astype("Int64")
-            .astype(str)
-            .str.contains(
-                search.strip(),
-                regex=False
-            )
-        ]
-
-    counts = (
-        filtered_risk["Risk_Level"]
-        .value_counts()
-        .reindex(
-            ["Low", "Medium", "High"],
-            fill_value=0
-        )
+    st.caption(
+        "The table includes the four key employee "
+        "risk fields and the available original "
+        "predictors. Use the horizontal scrollbar "
+        "to view all columns."
     )
-
-    st.subheader("Risk Distribution")
 
     if filtered_risk.empty:
+
         st.info(
             "No employees match the selected filters."
         )
+
     else:
-        donut_chart(
-            counts.values,
-            counts.index,
-            [TEAL, GOLD, RED],
-            len(filtered_risk),
-            height=260
+
+        displayed_table = full_employee_risk_table(
+            filtered_risk
         )
 
-    st.subheader("Employee Risk Details")
-
-    employee_table(filtered_risk)
-
-    with st.expander(
-        "View all employee attributes and predictors"
-    ):
-        employee_table(
-            filtered_risk,
-            show_all=True
-        )
+    # ----------------------------------------------
+    # DOWNLOAD
+    # ----------------------------------------------
 
     st.download_button(
-        "Download Filtered Results",
+        "Download Filtered Employee Risk Details",
         data=filtered_risk.to_csv(index=False),
-        file_name="Filtered_Employee_Risk.csv",
+        file_name="Filtered_Employee_Risk_Details.csv",
         mime="text/csv"
     )
 
     st.caption(
-        "Risk classifications are estimates, "
-        "not confirmed future departures."
+        "Risk classifications are model estimates, "
+        "not confirmed future departures. "
+        "The original prediction values have not "
+        "been recalculated."
     )
 
 # ==================================================
@@ -968,6 +1234,10 @@ elif page == "Model Insights":
     st.subheader(
         "Selected Model: Calibrated Logistic Regression"
     )
+
+    # ----------------------------------------------
+    # MODEL PERFORMANCE
+    # ----------------------------------------------
 
     c1, c2, c3, c4 = st.columns(4)
 
@@ -1013,19 +1283,52 @@ elif page == "Model Insights":
         "with 58 false alerts."
     )
 
+    # ----------------------------------------------
+    # POWER BI PREDICTOR RANKING
+    # ----------------------------------------------
+
+    st.divider()
+
+    st.subheader("Predictor Ranking")
+
+    st.write(
+        "The chart below reproduces the ranking "
+        "values visible in the supplied Power BI "
+        "screenshot. These values are shown for "
+        "presentation comparison and have not "
+        "been recalculated from the model."
+    )
+
+    predictor_ranking_chart()
+
+    st.caption(
+        "The supplied screenshot contains 21 "
+        "visible predictor rankings. The exact "
+        "22-predictor model specification and "
+        "ranking calculation should be confirmed "
+        "against the original notebook before "
+        "final assessment submission."
+    )
+
+    # ----------------------------------------------
+    # MODEL INTERPRETATION
+    # ----------------------------------------------
+
     st.subheader("Model Predictors")
 
     st.write(
-        "The existing model uses 22 predictors. "
-        "Important predictors include OverTime, "
-        "StockOptionLevel, YearsSinceLastPromotion, "
+        "The existing model is documented as using "
+        "22 predictors. The highest-ranked factors "
+        "in the supplied Power BI chart include "
+        "OverTime, StockOptionLevel, "
+        "YearsSinceLastPromotion, "
         "NumCompaniesWorked and TotalWorkingYears."
     )
 
     st.caption(
-        "Predictor importance describes model behaviour, "
-        "not causation. Refer to the original notebook "
-        "for exact importance values."
+        "Predictor rankings describe model behaviour "
+        "and should not be interpreted as proof "
+        "of causation."
     )
 
     st.subheader("HR Recommendations")
