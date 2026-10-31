@@ -1,4 +1,5 @@
 
+import joblib
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -109,6 +110,14 @@ risk["EmployeeNumber"] = pd.to_numeric(
     risk["EmployeeNumber"],
     errors="coerce"
 )
+MODEL_DIR = Path(__file__).resolve().parent
+
+@st.cache_resource
+def load_prediction_model():
+    model = joblib.load(MODEL_DIR / "calibrated_attrition_model.joblib")
+    features = joblib.load(MODEL_DIR / "model_features.joblib")
+    thresholds = joblib.load(MODEL_DIR / "risk_thresholds.joblib")
+    return model, features, thresholds
 
 # ==================================================
 # PREDICTOR DEFINITIONS
@@ -1069,7 +1078,76 @@ if page == "Integrated Dashboard":
 # PAGE 2: EMPLOYEE RISK EXPLORER
 # ==================================================
 
-elif page == "Employee Risk Explorer":
+    st.divider()
+    st.subheader("Live Attrition Prediction")
+    st.caption(
+        "Enter employee attributes to generate a new prediction "
+        "using the trained calibrated Logistic Regression model."
+    )
+
+    try:
+        model, features, thresholds = load_prediction_model()
+
+        with st.form("live_prediction_form"):
+            input_values = {}
+            cols = st.columns(3)
+
+            for i, feature in enumerate(features):
+                with cols[i % 3]:
+                    if feature in ["Department", "JobRole", "BusinessTravel", "OverTime"]:
+                        options = sorted(
+                            risk[feature].dropna().astype(str).unique().tolist()
+                        )
+                        input_values[feature] = st.selectbox(feature, options)
+                    else:
+                        values = pd.to_numeric(risk[feature], errors="coerce").dropna()
+                        default = float(values.median())
+
+                        if pd.api.types.is_integer_dtype(risk[feature]):
+                            input_values[feature] = st.number_input(
+                                feature,
+                                min_value=int(values.min()),
+                                max_value=int(values.max()),
+                                value=int(default),
+                                step=1
+                            )
+                        else:
+                            input_values[feature] = st.number_input(
+                                feature,
+                                min_value=float(values.min()),
+                                max_value=float(values.max()),
+                                value=default
+                            )
+
+            submitted = st.form_submit_button(
+                "Predict Attrition Risk",
+                type="primary"
+            )
+
+        if submitted:
+            new_employee = pd.DataFrame([input_values], columns=features)
+            probability = float(model.predict_proba(new_employee)[0, 1])
+
+            if probability <= thresholds["low_threshold"]:
+                risk_level = "Low"
+            elif probability <= thresholds["high_threshold"]:
+                risk_level = "Medium"
+            else:
+                risk_level = "High"
+
+            c1, c2 = st.columns(2)
+            c1.metric("Predicted Attrition Probability", f"{probability:.1%}")
+            c2.metric("Predicted Risk Level", risk_level)
+
+            st.caption(
+                "This is a model estimate, not a confirmed future departure. "
+                "Use alongside HR judgement."
+            )
+
+    except Exception as error:
+        st.error(f"Live prediction could not be loaded: {error}")
+        
+elif page == "Model Insights":
 
     st.title("EMPLOYEE RISK DETAILS")
 
