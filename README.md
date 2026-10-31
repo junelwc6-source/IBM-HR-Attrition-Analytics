@@ -54,14 +54,15 @@ The project uses five related CSV files:
 
 The datasets were merged using `EmployeeNumber` as the common identifier.
 
-### Prepared Datasets for Power BI
+### Prepared Datasets for Power BI and Streamlit
 
-Two prepared datasets are available in this GitHub repository:
+Three prepared datasets are available in this GitHub repository:
 
-- **IBM_HR_Attrition_Cleaned.csv:** The cleaned historical dataset containing all 1,470 employee records, used for descriptive analytics.
-- **HR_Attrition_Predictive_Risk.csv:** The predictive risk dataset containing 1,233 employees who stayed, including estimated attrition probabilities and risk categories.
+- **IBM_HR_Attrition_Cleaned.csv:** Cleaned dataset containing all 1,470 employee records, prepared for descriptive analytics in Power BI.
+- **HR_Attrition_Historical.csv:** Historical employee dataset used by the Streamlit application for descriptive attrition analysis.
+- **HR_Attrition_Predictive_Risk.csv:** Predictive risk dataset containing 1,233 employees who stayed, including estimated attrition probabilities and risk categories, used by Power BI and Streamlit.
 
-These datasets are imported directly into Power BI to support the interactive dashboard.
+These datasets support the interactive Power BI report and Streamlit application.
 
 ### Dataset Summary
 
