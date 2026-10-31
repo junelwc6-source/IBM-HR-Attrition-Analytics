@@ -406,7 +406,7 @@ def predictor_ranking_chart():
         .str.replace(r"(?<!^)(?=[A-Z])", " ", regex=True)
     )
 
-    ranking = ranking.iloc[::-1]
+    ranking = ranking.head(10).iloc[::-1]
 
     fig = go.Figure(go.Bar(
         x=ranking["Ranking Score"],
@@ -423,7 +423,7 @@ def predictor_ranking_chart():
             text="Ranking by Predictor",
             font=dict(size=16), x=0
         ),
-        height=680,
+        height=420,
         showlegend=False,
         paper_bgcolor="white",
         plot_bgcolor="white",
