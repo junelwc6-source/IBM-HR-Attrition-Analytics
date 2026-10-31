@@ -7,6 +7,13 @@
 **Python • Machine Learning • Power BI • HR Retention Strategy**
 
 > Understanding employee attrition, estimating future risk and supporting practical HR retention decisions.
+> 
+### 🌐 Live Interactive Dashboard
+
+[Launch the HR Employee Attrition Analytics Dashboard](PASTE_YOUR_STREAMLIT_URL_HERE)
+
+Explore historical attrition patterns, employee predictive risk and model insights through the interactive Streamlit application.
+
 
 [📓 Python Notebook](IBM_HR_Attrition_Capstone.ipynb) · [🖼️ Dashboard Screenshot](HR_Attrition_Dashboard.png)
 
