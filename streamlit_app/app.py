@@ -50,6 +50,7 @@ h2, h3 {font-size: 1rem !important; padding: 0.1rem 0 !important;}
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_DIR = Path(__file__).resolve().parent
 
+
 @st.cache_data
 def load_data():
     historical = pd.read_csv(
@@ -59,6 +60,7 @@ def load_data():
         BASE_DIR / "HR_Attrition_Predictive_Risk.csv"
     )
     return historical, risk
+
 
 @st.cache_resource
 def load_prediction_model():
@@ -72,6 +74,7 @@ def load_prediction_model():
         MODEL_DIR / "risk_thresholds.joblib"
     )
     return model, features, thresholds
+
 
 try:
     historical, risk = load_data()
@@ -101,6 +104,19 @@ for data in (historical, risk):
 # ==================================================
 # PREDICTOR DEFINITIONS
 # ==================================================
+
+TOP_10_PREDICTORS = [
+    "OverTime",
+    "StockOptionLevel",
+    "YearsSinceLastPromotion",
+    "NumCompaniesWorked",
+    "TotalWorkingYears",
+    "BusinessTravel",
+    "JobSatisfaction",
+    "JobInvolvement",
+    "JobRole",
+    "TrainingTimesLastYear"
+]
 
 PREDICTOR_COLUMNS = [
     "OverTime",
@@ -236,7 +252,7 @@ def attrition_chart(
     )
 
     st.plotly_chart(
-        fig, use_container_width=True,
+        fig, width="stretch",
         config={"displayModeBar": False}
     )
 
@@ -272,7 +288,7 @@ def donut_chart(
     )
 
     st.plotly_chart(
-        fig, use_container_width=True,
+        fig, width="stretch",
         config={"displayModeBar": False}
     )
 
@@ -301,7 +317,7 @@ def employee_table(data):
     })
 
     st.dataframe(
-        table, use_container_width=True,
+        table, width="stretch",
         hide_index=True, height=260
     )
 
@@ -383,7 +399,7 @@ def full_employee_risk_table(data):
 
     st.dataframe(
         styled,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         height=540,
         row_height=30
@@ -406,6 +422,7 @@ def predictor_ranking_chart():
         .str.replace(r"(?<!^)(?=[A-Z])", " ", regex=True)
     )
 
+    # Full original ranking, not Top 10
     ranking = ranking.iloc[::-1]
 
     fig = go.Figure(go.Bar(
@@ -441,7 +458,7 @@ def predictor_ranking_chart():
     fig.update_yaxes(title=None, automargin=True)
 
     st.plotly_chart(
-        fig, use_container_width=True,
+        fig, width="stretch",
         config={"displayModeBar": False}
     )
 
@@ -451,8 +468,7 @@ def predictor_ranking_chart():
 # ==================================================
 
 def live_prediction_section():
-    st.divider()
-    st.subheader("LIVE ATTRITION PREDICTION")
+    st.title("LIVE ATTRITION PREDICTION")
 
     st.caption(
         "Enter employee attributes to generate a new "
@@ -486,82 +502,122 @@ def live_prediction_section():
         "OverTime"
     }
 
+    main_features = [
+        f for f in TOP_10_PREDICTORS if f in features
+    ]
+    other_features = [
+        f for f in features if f not in main_features
+    ]
+
     st.info(
-        "The form starts with typical values from the "
-        "historical employee dataset. Change any fields "
-        "to explore a different employee profile."
+        "The Top 10 ranked predictors are shown first. "
+        "The remaining attributes are available below. "
+        "All 22 predictors are used by the trained model."
     )
 
-       with st.form("live_attrition_prediction"):
+    # Input helper: preserves the original data types,
+    # options, ranges and median default values.
+    def employee_input(feature):
+        source = risk[feature]
+
+        if feature in categorical_features:
+            options = sorted(
+                source.dropna()
+                .astype(str)
+                .unique()
+                .tolist()
+            )
+
+            if not options:
+                st.error(
+                    f"No available values for {feature}"
+                )
+                return None
+
+            return st.selectbox(
+                feature,
+                options,
+                key=f"predict_{feature}"
+            )
+
+        numeric = pd.to_numeric(
+            source, errors="coerce"
+        ).dropna()
+
+        if numeric.empty:
+            st.error(
+                f"No numeric values for {feature}"
+            )
+            return None
+
+        minimum = float(numeric.min())
+        maximum = float(numeric.max())
+        median = float(numeric.median())
+
+        if (numeric % 1 == 0).all():
+            return st.number_input(
+                feature,
+                min_value=int(minimum),
+                max_value=int(maximum),
+                value=int(round(median)),
+                step=1,
+                key=f"predict_{feature}"
+            )
+
+        return st.number_input(
+            feature,
+            min_value=minimum,
+            max_value=maximum,
+            value=median,
+            key=f"predict_{feature}"
+        )
+
+    with st.form("live_attrition_prediction"):
         input_values = {}
+
+        st.subheader("TOP 10 PREDICTORS")
+
         cols = st.columns(3)
 
-        for i, feature in enumerate(features):
+        for i, feature in enumerate(main_features):
             with cols[i % 3]:
-                source = risk[feature]
-            source = risk[feature]
+                input_values[feature] = employee_input(feature)
 
-                if feature in categorical_features:
-                    options = sorted(
-                        source.dropna()
-                        .astype(str)
-                        .unique()
-                        .tolist()
-                    )
+        with st.expander(
+            f"Additional Employee Attributes "
+            f"({len(other_features)})",
+            expanded=False
+        ):
+            st.caption(
+                "These attributes are also required by the "
+                "model. Default values are based on the "
+                "available employee data."
+            )
 
-                    if not options:
-                        st.error(
-                            f"No available values for {feature}"
-                        )
-                        return
+            extra_cols = st.columns(3)
 
-                    input_values[feature] = st.selectbox(
-                        feature,
-                        options,
-                        key=f"predict_{feature}"
-                    )
-
-                else:
-                    numeric = pd.to_numeric(
-                        source, errors="coerce"
-                    ).dropna()
-
-                    if numeric.empty:
-                        st.error(
-                            f"No numeric values for {feature}"
-                        )
-                        return
-
-                    minimum = float(numeric.min())
-                    maximum = float(numeric.max())
-                    median = float(numeric.median())
-
-                    # Preserve integer-valued predictor types
-                    if (numeric % 1 == 0).all():
-                        input_values[feature] = st.number_input(
-                            feature,
-                            min_value=int(minimum),
-                            max_value=int(maximum),
-                            value=int(round(median)),
-                            step=1,
-                            key=f"predict_{feature}"
-                        )
-                    else:
-                        input_values[feature] = st.number_input(
-                            feature,
-                            min_value=minimum,
-                            max_value=maximum,
-                            value=median,
-                            key=f"predict_{feature}"
-                        )
+            for i, feature in enumerate(other_features):
+                with extra_cols[i % 3]:
+                    input_values[feature] = employee_input(feature)
 
         submitted = st.form_submit_button(
             "Predict Attrition Risk",
             type="primary",
-            use_container_width=True
+            width="stretch"
         )
 
     if submitted:
+        if any(
+            input_values.get(feature) is None
+            for feature in features
+        ):
+            st.error(
+                "Some predictor values are missing. "
+                "Please check the input fields."
+            )
+            return
+
+        # Restore exact feature order required by the model.
         new_employee = pd.DataFrame(
             [input_values], columns=features
         )
@@ -624,7 +680,7 @@ def live_prediction_section():
 
 
 # ==================================================
-# NAVIGATION
+# NAVIGATION — FOUR PAGES
 # ==================================================
 
 st.sidebar.title("📊 HR Analytics Portal")
@@ -1057,7 +1113,12 @@ elif page == "Employee Risk Explorer":
 # ==================================================
 
 elif page == "Live Attrition Prediction":
+
     live_prediction_section()
+
+# ==================================================
+# PAGE 4: MODEL INSIGHTS
+# ==================================================
 
 elif page == "Model Insights":
 
@@ -1090,7 +1151,7 @@ elif page == "Model Insights":
 
     st.dataframe(
         comparison,
-        use_container_width=True,
+        width="stretch",
         hide_index=True
     )
 
@@ -1122,14 +1183,50 @@ elif page == "Model Insights":
         "from the model."
     )
 
+    # Restore the complete original chart
     predictor_ranking_chart()
 
     st.caption(
-        "The display ranking contains 21 predictors. "
-        "The trained model uses 22 predictors; the final "
-        "model importance CSV remains the authoritative "
-        "source for complete rankings."
+        "The chart displays all 21 predictors with available "
+        "Power BI ranking scores. Department is the 22nd "
+        "model predictor but has no score in the original "
+        "ranking data. The trained model uses all 22."
     )
+
+    # Explicitly account for all 22 model predictors
+    with st.expander(
+        "View All 22 Model Predictors",
+        expanded=False
+    ):
+        try:
+            _, model_features, _ = load_prediction_model()
+
+            score_lookup = dict(POWERBI_RANKING)
+
+            predictor_details = pd.DataFrame({
+                "Predictor": model_features,
+                "Power BI Ranking Score": [
+                    score_lookup.get(feature)
+                    for feature in model_features
+                ]
+            })
+
+            st.dataframe(
+                predictor_details,
+                width="stretch",
+                hide_index=True,
+                column_config={
+                    "Power BI Ranking Score": st.column_config.NumberColumn(
+                        "Power BI Ranking Score",
+                        help="Blank means no ranking score was provided."
+                    )
+                }
+            )
+
+        except Exception as error:
+            st.warning(
+                f"Unable to load the full predictor list: {error}"
+            )
 
     st.subheader("Model Predictors")
 
