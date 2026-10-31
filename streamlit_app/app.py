@@ -1,9 +1,12 @@
 
-import streamlit as st
+import re
+from pathlib import Path
+
+import joblib
 import pandas as pd
 import plotly.graph_objects as go
-import joblib
-from pathlib import Path
+import streamlit as st
+
 
 # ==================================================
 # PAGE CONFIGURATION
@@ -13,7 +16,7 @@ st.set_page_config(
     page_title="HR Attrition & Predictive Risk",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed",
 )
 
 NAVY = "#20366B"
@@ -22,26 +25,84 @@ GREY = "#B8B8B8"
 RED = "#E56B58"
 GOLD = "#F1B83D"
 
-st.markdown("""
-<style>
-.stApp {background-color: #F7F9FC;}
-.block-container {
-    max-width: 100%;
-    padding: 0.6rem 1rem 1rem;
-}
-h1 {font-size: 1.45rem !important; padding: 0 !important;}
-h2, h3 {font-size: 1rem !important; padding: 0.1rem 0 !important;}
-[data-testid="stVerticalBlock"] {gap: 0.35rem;}
-[data-testid="stMetric"] {
-    background: white;
-    border: 1px solid #E2E7EF;
-    border-radius: 8px;
-    padding: 0.5rem;
-}
-[data-testid="stMetricValue"] {font-size: 1.3rem;}
-[data-testid="stMetricLabel"] {font-size: 0.75rem;}
-</style>
-""", unsafe_allow_html=True)
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background-color: #F7F9FC;
+    }
+
+    /* Keep page headings clear of Streamlit's top toolbar */
+    .block-container {
+        max-width: 100%;
+        padding: 3.4rem 1rem 1.2rem;
+    }
+
+    h1 {
+        font-size: 1.45rem !important;
+        line-height: 1.3 !important;
+        padding: 0 !important;
+        margin: 0 0 0.25rem 0 !important;
+    }
+
+    h2, h3 {
+        font-size: 1rem !important;
+        line-height: 1.3 !important;
+        padding: 0.15rem 0 !important;
+        margin: 0.15rem 0 0.3rem 0 !important;
+    }
+
+    [data-testid="stVerticalBlock"] {
+        gap: 0.45rem;
+    }
+
+    [data-testid="stMetric"] {
+        background: white;
+        border: 1px solid #E2E7EF;
+        border-radius: 8px;
+        padding: 0.55rem;
+    }
+
+    [data-testid="stMetricValue"] {
+        font-size: 1.3rem;
+    }
+
+    [data-testid="stMetricLabel"] {
+        font-size: 0.75rem;
+    }
+
+    [data-testid="stPlotlyChart"] {
+        background: white;
+        border-radius: 6px;
+    }
+
+    /* Space between form labels and their input widgets */
+    div[data-testid="stForm"] {
+        padding-top: 0.9rem;
+    }
+
+    div[data-testid="stForm"] h3 {
+        margin-bottom: 0.9rem !important;
+    }
+
+    div[data-testid="stForm"] [data-testid="stWidgetLabel"] {
+        margin-bottom: 0.15rem;
+    }
+
+    /* Compact but readable model insights */
+    [data-testid="stDataFrame"] {
+        margin-top: 0.15rem;
+        margin-bottom: 0.35rem;
+    }
+
+    hr {
+        margin: 0.6rem 0 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 # ==================================================
 # FILE PATHS AND DATA LOADING
@@ -82,24 +143,33 @@ except Exception as error:
     st.error(f"Unable to load CSV files: {error}")
     st.stop()
 
+
 historical["Attrition_Flag"] = (
     historical["Attrition"]
-    .astype(str).str.strip().str.lower()
+    .astype(str)
+    .str.strip()
+    .str.lower()
     .map({"yes": 1, "no": 0})
 )
 
 risk["Risk_Level"] = (
-    risk["Risk_Level"].astype(str).str.strip().str.title()
+    risk["Risk_Level"]
+    .astype(str)
+    .str.strip()
+    .str.title()
 )
 
 risk["Predicted_Probability"] = pd.to_numeric(
-    risk["Predicted_Probability"], errors="coerce"
+    risk["Predicted_Probability"],
+    errors="coerce",
 )
 
 for data in (historical, risk):
     data["EmployeeNumber"] = pd.to_numeric(
-        data["EmployeeNumber"], errors="coerce"
+        data["EmployeeNumber"],
+        errors="coerce",
     )
+
 
 # ==================================================
 # PREDICTOR DEFINITIONS
@@ -115,7 +185,7 @@ TOP_10_PREDICTORS = [
     "JobSatisfaction",
     "JobInvolvement",
     "JobRole",
-    "TrainingTimesLastYear"
+    "TrainingTimesLastYear",
 ]
 
 PREDICTOR_COLUMNS = [
@@ -139,9 +209,11 @@ PREDICTOR_COLUMNS = [
     "DistanceFromHome",
     "PercentSalaryHike",
     "PerformanceRating",
-    "WorkLifeBalance"
+    "WorkLifeBalance",
 ]
 
+# Original documented Power BI ranking values.
+# All 21 scores are intentionally preserved.
 POWERBI_RANKING = [
     ("OverTime", 100),
     ("StockOptionLevel", 23),
@@ -163,35 +235,89 @@ POWERBI_RANKING = [
     ("DistanceFromHome", 3),
     ("PercentSalaryHike", 2),
     ("PerformanceRating", 0),
-    ("WorkLifeBalance", 0)
+    ("WorkLifeBalance", 0),
 ]
 
 EXCLUDED_DISPLAY_COLUMNS = {
-    "Attrition", "Attrition_Flag",
-    "Predicted_Probability", "Risk_Level",
-    "EmployeeNumber", "Department",
-    "AgeGroup", "Age_Group", "IncomeGroup",
-    "SatisfactionGroup", "PromotionBand",
-    "WorkingYearsBand", "WorkingYearsGroup",
-    "Prediction", "Predicted_Attrition"
+    "Attrition",
+    "Attrition_Flag",
+    "Predicted_Probability",
+    "Risk_Level",
+    "EmployeeNumber",
+    "Department",
+    "AgeGroup",
+    "Age_Group",
+    "IncomeGroup",
+    "SatisfactionGroup",
+    "PromotionBand",
+    "WorkingYearsBand",
+    "WorkingYearsGroup",
+    "Prediction",
+    "Predicted_Attrition",
 }
+
+DISPLAY_NAMES = {
+    "OverTime": "Overtime",
+    "StockOptionLevel": "Stock Option Level",
+    "YearsSinceLastPromotion": "Years Since Last Promotion",
+    "NumCompaniesWorked": "Number of Companies Worked",
+    "TotalWorkingYears": "Total Working Years",
+    "BusinessTravel": "Business Travel",
+    "JobSatisfaction": "Job Satisfaction",
+    "JobInvolvement": "Job Involvement",
+    "JobRole": "Job Role",
+    "TrainingTimesLastYear": "Training Times Last Year",
+    "EnvironmentSatisfaction": "Environment Satisfaction",
+    "YearsInCurrentRole": "Years in Current Role",
+    "MonthlyIncome": "Monthly Income",
+    "YearsAtCompany": "Years at Company",
+    "RelationshipSatisfaction": "Relationship Satisfaction",
+    "JobLevel": "Job Level",
+    "YearsWithCurrManager": "Years with Current Manager",
+    "DistanceFromHome": "Distance from Home",
+    "PercentSalaryHike": "Percent Salary Hike",
+    "PerformanceRating": "Performance Rating",
+    "WorkLifeBalance": "Work-Life Balance",
+    "Department": "Department",
+}
+
+
+def display_name(feature):
+    if feature in DISPLAY_NAMES:
+        return DISPLAY_NAMES[feature]
+
+    return re.sub(
+        r"(?<!^)(?=[A-Z])",
+        " ",
+        str(feature),
+    ).strip()
+
 
 # ==================================================
 # REUSABLE CHART FUNCTIONS
 # ==================================================
 
 def attrition_chart(
-    data, column, title, order=None,
-    horizontal=False, benchmark=None, height=210
+    data,
+    column,
+    title,
+    order=None,
+    horizontal=False,
+    benchmark=None,
+    height=235,
 ):
     summary = (
         data.groupby(column, observed=True)["Attrition_Flag"]
-        .mean().mul(100).reset_index(name="Rate")
+        .mean()
+        .mul(100)
+        .reset_index(name="Rate")
     )
 
     if order is not None:
         summary[column] = pd.Categorical(
-            summary[column], categories=order, ordered=True
+            summary[column],
+            categories=order,
+            ordered=True,
         )
         summary = summary.sort_values(column)
     elif horizontal:
@@ -200,143 +326,228 @@ def attrition_chart(
     fig = go.Figure()
 
     if horizontal:
-        fig.add_trace(go.Bar(
-            x=summary["Rate"],
-            y=summary[column].astype(str),
-            orientation="h",
-            marker_color=GREY,
-            text=[f"{v:.1f}%" for v in summary["Rate"]],
-            textposition="outside",
-            cliponaxis=False
-        ))
-        maximum = summary["Rate"].max() if not summary.empty else 0
-        fig.update_xaxes(range=[0, max(45, maximum * 1.25)])
+        fig.add_trace(
+            go.Bar(
+                x=summary["Rate"],
+                y=summary[column].astype(str),
+                orientation="h",
+                marker_color=GREY,
+                text=[
+                    f"{value:.1f}%"
+                    for value in summary["Rate"]
+                ],
+                textposition="outside",
+                cliponaxis=False,
+            )
+        )
+
+        maximum = (
+            summary["Rate"].max()
+            if not summary.empty
+            else 0
+        )
+
+        fig.update_xaxes(
+            range=[0, max(45, maximum * 1.25)]
+        )
 
         if benchmark is not None:
             fig.add_vline(
-                x=benchmark, line_color=RED, line_width=1.5
+                x=benchmark,
+                line_color=RED,
+                line_width=1.5,
             )
+
     else:
-        fig.add_trace(go.Bar(
-            x=summary[column].astype(str),
-            y=summary["Rate"],
-            marker_color=GREY,
-            text=[f"{v:.1f}%" for v in summary["Rate"]],
-            textposition="outside",
-            cliponaxis=False
-        ))
-        maximum = summary["Rate"].max() if not summary.empty else 0
-        fig.update_yaxes(range=[0, max(35, maximum * 1.2)])
+        fig.add_trace(
+            go.Bar(
+                x=summary[column].astype(str),
+                y=summary["Rate"],
+                marker_color=GREY,
+                text=[
+                    f"{value:.1f}%"
+                    for value in summary["Rate"]
+                ],
+                textposition="outside",
+                cliponaxis=False,
+            )
+        )
+
+        maximum = (
+            summary["Rate"].max()
+            if not summary.empty
+            else 0
+        )
+
+        fig.update_yaxes(
+            range=[0, max(35, maximum * 1.2)]
+        )
 
         if benchmark is not None:
             fig.add_hline(
-                y=benchmark, line_color=RED, line_width=1.5
+                y=benchmark,
+                line_color=RED,
+                line_width=1.5,
             )
 
     fig.update_layout(
-        title=dict(text=title, font=dict(size=12), x=0.02),
-        height=height,
-        showlegend=False,
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        margin=dict(l=10, r=20, t=35, b=15),
-        font=dict(size=10),
-        bargap=0.25
-    )
-
-    fig.update_xaxes(
-        title=None, tickfont=dict(size=9), automargin=True
-    )
-    fig.update_yaxes(
-        title=None, tickfont=dict(size=9), automargin=True
-    )
-
-    st.plotly_chart(
-        fig, width="stretch",
-        config={"displayModeBar": False}
-    )
-
-
-def donut_chart(
-    values, labels, colors, centre_value,
-    title="", height=175
-):
-    fig = go.Figure(go.Pie(
-        values=values,
-        labels=labels,
-        hole=0.65,
-        sort=False,
-        marker_colors=colors,
-        textinfo="percent",
-        textfont=dict(size=10)
-    ))
-
-    fig.update_layout(
         title=dict(
-            text=title, x=0.5, font=dict(size=11)
+            text=title,
+            font=dict(size=11),
+            x=0.02,
         ),
         height=height,
         showlegend=False,
         paper_bgcolor="white",
-        margin=dict(l=0, r=0, t=28, b=0),
-        annotations=[dict(
-            text=f"{centre_value:,}",
-            x=0.5, y=0.5,
-            showarrow=False,
-            font=dict(size=16, color=NAVY)
-        )]
+        plot_bgcolor="white",
+        margin=dict(
+            l=5,
+            r=15,
+            t=35,
+            b=30,
+        ),
+        font=dict(size=9),
+        bargap=0.25,
+    )
+
+    fig.update_xaxes(
+        title=None,
+        tickfont=dict(size=8),
+        automargin=True,
+    )
+
+    fig.update_yaxes(
+        title=None,
+        tickfont=dict(size=8),
+        automargin=True,
     )
 
     st.plotly_chart(
-        fig, width="stretch",
-        config={"displayModeBar": False}
+        fig,
+        width="stretch",
+        config={"displayModeBar": False},
+    )
+
+
+def donut_chart(
+    values,
+    labels,
+    colors,
+    centre_value,
+    title="",
+    height=175,
+):
+    fig = go.Figure(
+        go.Pie(
+            values=values,
+            labels=labels,
+            hole=0.65,
+            sort=False,
+            marker_colors=colors,
+            textinfo="percent",
+            textfont=dict(size=10),
+        )
+    )
+
+    fig.update_layout(
+        title=dict(
+            text=title,
+            x=0.5,
+            font=dict(size=11),
+        ),
+        height=height,
+        showlegend=False,
+        paper_bgcolor="white",
+        margin=dict(
+            l=0,
+            r=0,
+            t=28,
+            b=0,
+        ),
+        annotations=[
+            dict(
+                text=f"{centre_value:,}",
+                x=0.5,
+                y=0.5,
+                showarrow=False,
+                font=dict(
+                    size=16,
+                    color=NAVY,
+                ),
+            )
+        ],
+    )
+
+    st.plotly_chart(
+        fig,
+        width="stretch",
+        config={"displayModeBar": False},
     )
 
 
 def employee_table(data):
     columns = [
-        "EmployeeNumber", "Department",
-        "Risk_Level", "Predicted_Probability"
+        "EmployeeNumber",
+        "Department",
+        "Risk_Level",
+        "Predicted_Probability",
     ]
 
     table = data[columns].copy()
 
     table["Predicted_Probability"] = (
         table["Predicted_Probability"]
-        .map(lambda x: f"{x:.1%}" if pd.notna(x) else "")
+        .map(
+            lambda value: (
+                f"{value:.1%}"
+                if pd.notna(value)
+                else ""
+            )
+        )
     )
 
     table["EmployeeNumber"] = (
         table["EmployeeNumber"].astype("Int64")
     )
 
-    table = table.rename(columns={
-        "EmployeeNumber": "Employee Number",
-        "Risk_Level": "Risk Level",
-        "Predicted_Probability": "Predicted Probability"
-    })
+    table = table.rename(
+        columns={
+            "EmployeeNumber": "Employee Number",
+            "Risk_Level": "Risk Level",
+            "Predicted_Probability": (
+                "Predicted Probability"
+            ),
+        }
+    )
 
     st.dataframe(
-        table, width="stretch",
-        hide_index=True, height=260
+        table,
+        width="stretch",
+        hide_index=True,
+        height=260,
     )
 
 
 def full_employee_risk_table(data):
     primary_columns = [
-        "EmployeeNumber", "Department",
-        "Risk_Level", "Predicted_Probability"
+        "EmployeeNumber",
+        "Department",
+        "Risk_Level",
+        "Predicted_Probability",
     ]
 
     available_predictors = [
-        c for c in PREDICTOR_COLUMNS if c in data.columns
+        column
+        for column in PREDICTOR_COLUMNS
+        if column in data.columns
     ]
 
     additional_columns = [
-        c for c in data.columns
-        if c not in primary_columns
-        and c not in available_predictors
-        and c not in EXCLUDED_DISPLAY_COLUMNS
+        column
+        for column in data.columns
+        if column not in primary_columns
+        and column not in available_predictors
+        and column not in EXCLUDED_DISPLAY_COLUMNS
     ]
 
     display_columns = (
@@ -349,7 +560,13 @@ def full_employee_risk_table(data):
 
     table["Predicted_Probability"] = (
         table["Predicted_Probability"]
-        .map(lambda v: f"{v:.1%}" if pd.notna(v) else "")
+        .map(
+            lambda value: (
+                f"{value:.1%}"
+                if pd.notna(value)
+                else ""
+            )
+        )
     )
 
     table["EmployeeNumber"] = (
@@ -359,42 +576,39 @@ def full_employee_risk_table(data):
     rename_columns = {
         "EmployeeNumber": "Employee Number",
         "Risk_Level": "Risk Level",
-        "Predicted_Probability": "Predicted Probability",
-        "OverTime": "Overtime",
-        "StockOptionLevel": "Stock Option Level",
-        "YearsSinceLastPromotion": "Years Since Last Promotion",
-        "NumCompaniesWorked": "Num Companies Worked",
-        "TotalWorkingYears": "Total Working Years",
-        "BusinessTravel": "Business Travel",
-        "JobSatisfaction": "Job Satisfaction",
-        "JobInvolvement": "Job Involvement",
-        "TrainingTimesLastYear": "Training Times Last Year",
-        "EnvironmentSatisfaction": "Environment Satisfaction",
-        "YearsInCurrentRole": "Years In Current Role",
-        "MonthlyIncome": "Monthly Income",
-        "YearsAtCompany": "Years At Company",
-        "RelationshipSatisfaction": "Relationship Satisfaction",
-        "JobLevel": "Job Level",
-        "YearsWithCurrManager": "Years With Curr Manager",
-        "DistanceFromHome": "Distance From Home",
-        "PercentSalaryHike": "Percent Salary Hike",
-        "PerformanceRating": "Performance Rating",
-        "WorkLifeBalance": "Work Life Balance"
+        "Predicted_Probability": (
+            "Predicted Probability"
+        ),
     }
+
+    rename_columns.update(DISPLAY_NAMES)
 
     table = table.rename(columns=rename_columns)
 
     def colour_risk(value):
         if value == "High":
-            return "background-color: #F5B8B8; color: #6A1010;"
+            return (
+                "background-color: #F5B8B8;"
+                "color: #6A1010;"
+            )
+
         if value == "Medium":
-            return "background-color: #F9E59A; color: #654D00;"
+            return (
+                "background-color: #F9E59A;"
+                "color: #654D00;"
+            )
+
         if value == "Low":
-            return "background-color: #BDEBC1; color: #175B20;"
+            return (
+                "background-color: #BDEBC1;"
+                "color: #175B20;"
+            )
+
         return ""
 
     styled = table.style.map(
-        colour_risk, subset=["Risk Level"]
+        colour_risk,
+        subset=["Risk Level"],
     )
 
     st.dataframe(
@@ -402,7 +616,7 @@ def full_employee_risk_table(data):
         width="stretch",
         hide_index=True,
         height=540,
-        row_height=30
+        row_height=30,
     )
 
     st.caption(
@@ -414,57 +628,69 @@ def full_employee_risk_table(data):
 def predictor_ranking_chart():
     ranking = pd.DataFrame(
         POWERBI_RANKING,
-        columns=["Predictor", "Ranking Score"]
+        columns=["Predictor", "Ranking Score"],
     )
 
     ranking["Display Name"] = (
-        ranking["Predictor"]
-        .str.replace(r"(?<!^)(?=[A-Z])", " ", regex=True)
+        ranking["Predictor"].map(display_name)
     )
 
-    # Full original ranking, not Top 10
+    # Preserve all 21 original ranked predictors.
     ranking = ranking.iloc[::-1]
 
-    fig = go.Figure(go.Bar(
-        x=ranking["Ranking Score"],
-        y=ranking["Display Name"],
-        orientation="h",
-        marker_color="#EF8B61",
-        text=ranking["Ranking Score"],
-        textposition="outside",
-        cliponaxis=False
-    ))
+    fig = go.Figure(
+        go.Bar(
+            x=ranking["Ranking Score"],
+            y=ranking["Display Name"],
+            orientation="h",
+            marker_color="#EF8B61",
+            text=ranking["Ranking Score"],
+            textposition="outside",
+            cliponaxis=False,
+        )
+    )
 
     fig.update_layout(
         title=dict(
             text="Ranking by Predictor",
-            font=dict(size=16), x=0
+            font=dict(size=16),
+            x=0,
         ),
         height=680,
         showlegend=False,
         paper_bgcolor="white",
         plot_bgcolor="white",
-        margin=dict(l=15, r=45, t=45, b=35),
+        margin=dict(
+            l=15,
+            r=45,
+            t=45,
+            b=35,
+        ),
         font=dict(size=11),
-        bargap=0.35
+        bargap=0.35,
     )
 
     fig.update_xaxes(
         range=[0, 110],
         title="Power BI ranking value",
         showgrid=True,
-        gridcolor="#E8EBF0"
+        gridcolor="#E8EBF0",
     )
-    fig.update_yaxes(title=None, automargin=True)
+
+    fig.update_yaxes(
+        title=None,
+        automargin=True,
+    )
 
     st.plotly_chart(
-        fig, width="stretch",
-        config={"displayModeBar": False}
+        fig,
+        width="stretch",
+        config={"displayModeBar": False},
     )
 
 
 # ==================================================
-# LIVE PREDICTION FUNCTION
+# LIVE ATTRITION PREDICTION
 # ==================================================
 
 def live_prediction_section():
@@ -477,16 +703,25 @@ def live_prediction_section():
     )
 
     try:
-        model, features, thresholds = load_prediction_model()
+        model, features, thresholds = (
+            load_prediction_model()
+        )
     except Exception as error:
-        st.error(f"Unable to load trained model: {error}")
+        st.error(
+            f"Unable to load trained model: {error}"
+        )
         return
 
-    missing = [c for c in features if c not in risk.columns]
+    missing = [
+        feature
+        for feature in features
+        if feature not in risk.columns
+    ]
 
     if missing:
         st.error(
-            "Missing predictor columns: " + ", ".join(missing)
+            "Missing predictor columns: "
+            + ", ".join(missing)
         )
         return
 
@@ -499,26 +734,32 @@ def live_prediction_section():
         "Department",
         "JobRole",
         "BusinessTravel",
-        "OverTime"
+        "OverTime",
     }
 
     main_features = [
-        f for f in TOP_10_PREDICTORS if f in features
+        feature
+        for feature in TOP_10_PREDICTORS
+        if feature in features
     ]
+
     other_features = [
-        f for f in features if f not in main_features
+        feature
+        for feature in features
+        if feature not in main_features
     ]
 
     st.info(
-        "The Top 10 ranked predictors are shown first. "
-        "The remaining attributes are available below. "
-        "All 22 predictors are used by the trained model."
+        "The Top 10 predictors are displayed in ranking "
+        "order: ranks 1–5 on the left and 6–10 on the "
+        "right. The remaining attributes are under "
+        "Additional Employee Attributes. All 22 "
+        "predictors are used for the prediction."
     )
 
-    # Input helper: preserves the original data types,
-    # options, ranges and median default values.
-    def employee_input(feature):
+    def employee_input(feature, label=None):
         source = risk[feature]
+        field_label = label or display_name(feature)
 
         if feature in categorical_features:
             options = sorted(
@@ -530,23 +771,26 @@ def live_prediction_section():
 
             if not options:
                 st.error(
-                    f"No available values for {feature}"
+                    f"No available values for "
+                    f"{display_name(feature)}"
                 )
                 return None
 
             return st.selectbox(
-                feature,
+                field_label,
                 options,
-                key=f"predict_{feature}"
+                key=f"predict_{feature}",
             )
 
         numeric = pd.to_numeric(
-            source, errors="coerce"
+            source,
+            errors="coerce",
         ).dropna()
 
         if numeric.empty:
             st.error(
-                f"No numeric values for {feature}"
+                f"No numeric values for "
+                f"{display_name(feature)}"
             )
             return None
 
@@ -556,20 +800,20 @@ def live_prediction_section():
 
         if (numeric % 1 == 0).all():
             return st.number_input(
-                feature,
+                field_label,
                 min_value=int(minimum),
                 max_value=int(maximum),
                 value=int(round(median)),
                 step=1,
-                key=f"predict_{feature}"
+                key=f"predict_{feature}",
             )
 
         return st.number_input(
-            feature,
+            field_label,
             min_value=minimum,
             max_value=maximum,
             value=median,
-            key=f"predict_{feature}"
+            key=f"predict_{feature}",
         )
 
     with st.form("live_attrition_prediction"):
@@ -577,33 +821,67 @@ def live_prediction_section():
 
         st.subheader("TOP 10 PREDICTORS")
 
-        cols = st.columns(3)
+        left_column, right_column = st.columns(
+            2,
+            gap="large",
+        )
 
-        for i, feature in enumerate(main_features):
-            with cols[i % 3]:
-                input_values[feature] = employee_input(feature)
+        # Left: ranks 1–5, vertically.
+        with left_column:
+            for index, feature in enumerate(
+                main_features[:5],
+                start=1,
+            ):
+                input_values[feature] = employee_input(
+                    feature,
+                    label=(
+                        f"{index}. "
+                        f"{display_name(feature)}"
+                    ),
+                )
+
+        # Right: ranks 6–10, vertically.
+        with right_column:
+            for index, feature in enumerate(
+                main_features[5:10],
+                start=6,
+            ):
+                input_values[feature] = employee_input(
+                    feature,
+                    label=(
+                        f"{index}. "
+                        f"{display_name(feature)}"
+                    ),
+                )
 
         with st.expander(
-            f"Additional Employee Attributes "
+            "Additional Employee Attributes "
             f"({len(other_features)})",
-            expanded=False
+            expanded=False,
         ):
             st.caption(
-                "These attributes are also required by the "
-                "model. Default values are based on the "
-                "available employee data."
+                "These attributes are also required by "
+                "the model. Default values are based on "
+                "the available employee data."
             )
 
-            extra_cols = st.columns(3)
+            extra_cols = st.columns(
+                3,
+                gap="medium",
+            )
 
-            for i, feature in enumerate(other_features):
-                with extra_cols[i % 3]:
-                    input_values[feature] = employee_input(feature)
+            for index, feature in enumerate(
+                other_features
+            ):
+                with extra_cols[index % 3]:
+                    input_values[feature] = (
+                        employee_input(feature)
+                    )
 
         submitted = st.form_submit_button(
             "Predict Attrition Risk",
             type="primary",
-            width="stretch"
+            width="stretch",
         )
 
     if submitted:
@@ -617,18 +895,25 @@ def live_prediction_section():
             )
             return
 
-        # Restore exact feature order required by the model.
+        # Exact model feature order is preserved.
         new_employee = pd.DataFrame(
-            [input_values], columns=features
+            [input_values],
+            columns=features,
         )
 
         try:
             probability = float(
-                model.predict_proba(new_employee)[0, 1]
+                model.predict_proba(
+                    new_employee
+                )[0, 1]
             )
 
-            low = float(thresholds["low_threshold"])
-            high = float(thresholds["high_threshold"])
+            low = float(
+                thresholds["low_threshold"]
+            )
+            high = float(
+                thresholds["high_threshold"]
+            )
 
             if probability <= low:
                 level = "Low"
@@ -637,27 +922,32 @@ def live_prediction_section():
             else:
                 level = "High"
 
-            st.success("Prediction generated successfully!")
+            st.success(
+                "Prediction generated successfully!"
+            )
 
             c1, c2, c3 = st.columns(3)
 
             c1.metric(
                 "Predicted Attrition Probability",
-                f"{probability:.1%}"
+                f"{probability:.1%}",
             )
 
             c2.metric(
                 "Predicted Risk Level",
-                level
+                level,
             )
 
             c3.metric(
                 "Model Predictors Used",
-                len(features)
+                len(features),
             )
 
             st.progress(
-                min(max(probability, 0.0), 1.0)
+                min(
+                    max(probability, 0.0),
+                    1.0,
+                )
             )
 
             st.caption(
@@ -675,7 +965,8 @@ def live_prediction_section():
 
         except Exception as error:
             st.error(
-                f"Unable to generate prediction: {error}"
+                "Unable to generate prediction: "
+                f"{error}"
             )
 
 
@@ -691,13 +982,14 @@ page = st.sidebar.radio(
         "Integrated Dashboard",
         "Employee Risk Explorer",
         "Live Attrition Prediction",
-        "Model Insights"
-    ]
+        "Model Insights",
+    ],
 )
 
 st.sidebar.caption(
     "IBM HR Employee Attrition Capstone"
 )
+
 
 # ==================================================
 # PAGE 1: INTEGRATED DASHBOARD
@@ -718,85 +1010,132 @@ if page == "Integrated Dashboard":
 
     with f1:
         departments = sorted(
-            historical["Department"].dropna().unique()
+            historical["Department"]
+            .dropna()
+            .unique()
         )
+
         selected_departments = st.multiselect(
             "Department",
             departments,
             default=departments,
-            key="main_department"
+            key="main_department",
         )
 
     with f2:
         genders = sorted(
-            historical["Gender"].dropna().unique()
+            historical["Gender"]
+            .dropna()
+            .unique()
         )
+
         selected_genders = st.multiselect(
             "Gender",
             genders,
             default=genders,
-            key="main_gender"
+            key="main_gender",
         )
 
     with f3:
         age_order = [
-            "Under 30", "30-39", "40-49", "50 and above"
+            "Under 30",
+            "30-39",
+            "40-49",
+            "50 and above",
         ]
+
         available_ages = [
-            a for a in age_order
-            if a in historical["AgeGroup"].unique()
+            age
+            for age in age_order
+            if age in historical["AgeGroup"].unique()
         ]
+
         selected_ages = st.multiselect(
             "Age Group",
             available_ages,
             default=available_ages,
-            key="main_age"
+            key="main_age",
         )
 
     filtered = historical[
-        historical["Department"].isin(selected_departments)
-        & historical["Gender"].isin(selected_genders)
-        & historical["AgeGroup"].isin(selected_ages)
+        historical["Department"].isin(
+            selected_departments
+        )
+        & historical["Gender"].isin(
+            selected_genders
+        )
+        & historical["AgeGroup"].isin(
+            selected_ages
+        )
     ].copy()
 
     if filtered.empty:
-        st.warning("No employees match the selected filters.")
+        st.warning(
+            "No employees match the selected filters."
+        )
         st.stop()
 
     selected_employee_ids = (
-        filtered["EmployeeNumber"].dropna().unique()
+        filtered["EmployeeNumber"]
+        .dropna()
+        .unique()
     )
 
     shared_risk = risk[
-        risk["EmployeeNumber"].isin(selected_employee_ids)
+        risk["EmployeeNumber"].isin(
+            selected_employee_ids
+        )
     ].copy()
 
     total = len(filtered)
-    left = int(filtered["Attrition_Flag"].sum())
+    left = int(
+        filtered["Attrition_Flag"].sum()
+    )
     rate = left / total * 100
-    average_income = filtered["MonthlyIncome"].mean()
+    average_income = (
+        filtered["MonthlyIncome"].mean()
+    )
     high_risk = int(
-        shared_risk["Risk_Level"].eq("High").sum()
+        shared_risk["Risk_Level"]
+        .eq("High")
+        .sum()
     )
 
     k1, k2, k3, k4, k5 = st.columns(5)
 
-    k1.metric("Total Employees", f"{total:,}")
-    k2.metric("Employees Who Left", f"{left:,}")
-    k3.metric("Attrition Rate", f"{rate:.1f}%")
+    k1.metric(
+        "Total Employees",
+        f"{total:,}",
+    )
+    k2.metric(
+        "Employees Who Left",
+        f"{left:,}",
+    )
+    k3.metric(
+        "Attrition Rate",
+        f"{rate:.1f}%",
+    )
     k4.metric(
         "Average Monthly Income",
-        f"${average_income:,.0f}"
+        f"${average_income:,.0f}",
     )
-    k5.metric("High-Risk Employees", f"{high_risk:,}")
+    k5.metric(
+        "High-Risk Employees",
+        f"{high_risk:,}",
+    )
 
     st.divider()
 
     department_panel, history_panel, risk_panel = (
-        st.columns([1.05, 3.25, 1.9], gap="small")
+        st.columns(
+            [1.05, 3.25, 1.9],
+            gap="small",
+        )
     )
 
+    # ----------------------------------------------
     # DEPARTMENT OVERVIEW
+    # ----------------------------------------------
 
     with department_panel:
         st.subheader("DEPARTMENT OVERVIEW")
@@ -804,7 +1143,7 @@ if page == "Integrated Dashboard":
         for department in [
             "Research & Development",
             "Sales",
-            "Human Resources"
+            "Human Resources",
         ]:
             if department not in selected_departments:
                 continue
@@ -817,10 +1156,14 @@ if page == "Integrated Dashboard":
                 continue
 
             stayed = int(
-                subset["Attrition_Flag"].eq(0).sum()
+                subset["Attrition_Flag"]
+                .eq(0)
+                .sum()
             )
             departed = int(
-                subset["Attrition_Flag"].eq(1).sum()
+                subset["Attrition_Flag"]
+                .eq(1)
+                .sum()
             )
 
             donut_chart(
@@ -829,66 +1172,106 @@ if page == "Integrated Dashboard":
                 [TEAL, GREY],
                 len(subset),
                 department,
-                height=175
+                height=175,
             )
 
-        st.caption("Teal = Stayed | Grey = Left")
-
-    # HISTORICAL ATTRITION ANALYSIS
-
-    with history_panel:
-        st.subheader("HISTORICAL ATTRITION ANALYSIS")
-
-        attrition_chart(
-            filtered,
-            "JobRole",
-            "Attrition Rate by Job Role",
-            horizontal=True,
-            benchmark=rate,
-            height=250
+        st.caption(
+            "Teal = Stayed | Grey = Left"
         )
 
-        row1_left, row1_right = st.columns(2)
+    # ----------------------------------------------
+    # HISTORICAL ATTRITION ANALYSIS
+    # Six charts: 3 columns x 2 rows
+    # ----------------------------------------------
 
+    with history_panel:
+        st.subheader(
+            "HISTORICAL ATTRITION ANALYSIS"
+        )
+
+        row1_left, row1_middle, row1_right = (
+            st.columns(3, gap="small")
+        )
+
+        # ROW 1 — JOB ROLE
         with row1_left:
+            attrition_chart(
+                filtered,
+                "JobRole",
+                "Attrition Rate by Job Role",
+                horizontal=True,
+                benchmark=rate,
+                height=240,
+            )
+
+        # ROW 1 — OVERTIME
+        with row1_middle:
             attrition_chart(
                 filtered,
                 "OverTime",
                 "Attrition Rate by Overtime",
                 order=["Yes", "No"],
-                height=205
+                height=240,
             )
 
+        # ROW 1 — TOTAL WORKING YEARS
         with row1_right:
             working = filtered.copy()
+
             working["WorkingYearsBand"] = pd.cut(
                 working["TotalWorkingYears"],
-                bins=[-1, 5, 10, 20, float("inf")],
-                labels=["0–5", "6–10", "11–20", "21+"]
+                bins=[
+                    -1,
+                    5,
+                    10,
+                    20,
+                    float("inf"),
+                ],
+                labels=[
+                    "0–5",
+                    "6–10",
+                    "11–20",
+                    "21+",
+                ],
             )
 
             attrition_chart(
                 working,
                 "WorkingYearsBand",
                 "Attrition Rate by Total Working Years",
-                order=["0–5", "6–10", "11–20", "21+"],
+                order=[
+                    "0–5",
+                    "6–10",
+                    "11–20",
+                    "21+",
+                ],
                 benchmark=rate,
-                height=205
+                height=240,
             )
 
         row2_left, row2_middle, row2_right = (
-            st.columns(3)
+            st.columns(3, gap="small")
         )
 
+        # ROW 2 — PROMOTION BAND
         with row2_left:
             promotion = filtered.copy()
+
             promotion["PromotionBand_PBI"] = pd.cut(
                 promotion["YearsSinceLastPromotion"],
-                bins=[-1, 1, 3, 7, float("inf")],
+                bins=[
+                    -1,
+                    1,
+                    3,
+                    7,
+                    float("inf"),
+                ],
                 labels=[
-                    "0–1 years", "2–3 years",
-                    "4–7 years", "8+ years"
-                ]
+                    "0–1 years",
+                    "2–3 years",
+                    "4–7 years",
+                    "8+ years",
+                ],
             )
 
             attrition_chart(
@@ -896,36 +1279,45 @@ if page == "Integrated Dashboard":
                 "PromotionBand_PBI",
                 "Attrition Rate by Promotion Band",
                 order=[
-                    "0–1 years", "2–3 years",
-                    "4–7 years", "8+ years"
+                    "0–1 years",
+                    "2–3 years",
+                    "4–7 years",
+                    "8+ years",
                 ],
                 benchmark=rate,
-                height=210
+                height=240,
             )
 
+        # ROW 2 — INCOME GROUP
         with row2_middle:
             attrition_chart(
                 filtered,
                 "IncomeGroup",
                 "Attrition Rate by Income Group",
                 order=[
-                    "Low", "Lower-Middle",
-                    "Upper-Middle", "High"
+                    "Low",
+                    "Lower-Middle",
+                    "Upper-Middle",
+                    "High",
                 ],
                 benchmark=rate,
-                height=210
+                height=240,
             )
 
+        # ROW 2 — JOB SATISFACTION
         with row2_right:
             attrition_chart(
                 filtered,
                 "SatisfactionGroup",
                 "Attrition Rate by Job Satisfaction",
                 order=[
-                    "Low", "High", "Medium", "Very High"
+                    "Low",
+                    "High",
+                    "Medium",
+                    "Very High",
                 ],
                 benchmark=rate,
-                height=210
+                height=240,
             )
 
         st.caption(
@@ -933,10 +1325,14 @@ if page == "Integrated Dashboard":
             "historical attrition."
         )
 
+    # ----------------------------------------------
     # PREDICTIVE RISK ANALYSIS
+    # ----------------------------------------------
 
     with risk_panel:
-        st.subheader("PREDICTIVE RISK ANALYSIS")
+        st.subheader(
+            "PREDICTIVE RISK ANALYSIS"
+        )
 
         st.caption(
             "Uses the Department, Gender and Age Group "
@@ -946,27 +1342,34 @@ if page == "Integrated Dashboard":
         selected_levels = st.multiselect(
             "Risk Level",
             ["Low", "Medium", "High"],
-            default=["Low", "Medium", "High"],
-            key="main_risk_level"
+            default=[
+                "Low",
+                "Medium",
+                "High",
+            ],
+            key="main_risk_level",
         )
 
         employee_search = st.text_input(
             "Employee Number",
             placeholder="Search employee ID",
-            key="main_employee_search"
+            key="main_employee_search",
         )
 
         filtered_risk = shared_risk[
-            shared_risk["Risk_Level"].isin(selected_levels)
+            shared_risk["Risk_Level"].isin(
+                selected_levels
+            )
         ].copy()
 
         if employee_search.strip():
             filtered_risk = filtered_risk[
                 filtered_risk["EmployeeNumber"]
-                .astype("Int64").astype(str)
+                .astype("Int64")
+                .astype(str)
                 .str.contains(
                     employee_search.strip(),
-                    regex=False
+                    regex=False,
                 )
             ]
 
@@ -975,7 +1378,7 @@ if page == "Integrated Dashboard":
             .value_counts()
             .reindex(
                 ["Low", "Medium", "High"],
-                fill_value=0
+                fill_value=0,
             )
         )
 
@@ -990,10 +1393,13 @@ if page == "Integrated Dashboard":
                 counts.index,
                 [TEAL, GOLD, RED],
                 len(filtered_risk),
-                height=215
+                height=215,
             )
 
-        st.subheader("Employee Risk Details")
+        st.subheader(
+            "Employee Risk Details"
+        )
+
         employee_table(filtered_risk)
 
         st.caption(
@@ -1001,6 +1407,7 @@ if page == "Integrated Dashboard":
             "three filters. Risk Level and Employee Number "
             "further filter the predictive chart and table."
         )
+
 
 # ==================================================
 # PAGE 2: EMPLOYEE RISK EXPLORER
@@ -1019,43 +1426,54 @@ elif page == "Employee Risk Explorer":
 
     with f1:
         departments = sorted(
-            risk["Department"].dropna().unique()
+            risk["Department"]
+            .dropna()
+            .unique()
         )
 
         selected_departments = st.multiselect(
             "Department",
             departments,
             default=departments,
-            key="explorer_department"
+            key="explorer_department",
         )
 
     with f2:
         employee_search = st.text_input(
             "Employee Number",
             placeholder="Search employee number",
-            key="explorer_search"
+            key="explorer_search",
         )
 
     with f3:
         selected_levels = st.multiselect(
             "Risk Level",
             ["Low", "Medium", "High"],
-            default=["Low", "Medium", "High"],
-            key="explorer_risk"
+            default=[
+                "Low",
+                "Medium",
+                "High",
+            ],
+            key="explorer_risk",
         )
 
     filtered_risk = risk[
-        risk["Department"].isin(selected_departments)
-        & risk["Risk_Level"].isin(selected_levels)
+        risk["Department"].isin(
+            selected_departments
+        )
+        & risk["Risk_Level"].isin(
+            selected_levels
+        )
     ].copy()
 
     if employee_search.strip():
         filtered_risk = filtered_risk[
             filtered_risk["EmployeeNumber"]
-            .astype("Int64").astype(str)
+            .astype("Int64")
+            .astype(str)
             .str.contains(
                 employee_search.strip(),
-                regex=False
+                regex=False,
             )
         ]
 
@@ -1063,17 +1481,29 @@ elif page == "Employee Risk Explorer":
         "EmployeeNumber"
     )
 
-    counts = filtered_risk["Risk_Level"].value_counts()
+    counts = (
+        filtered_risk["Risk_Level"]
+        .value_counts()
+    )
 
     k1, k2, k3, k4 = st.columns(4)
 
     k1.metric(
         "Employees Displayed",
-        f"{len(filtered_risk):,}"
+        f"{len(filtered_risk):,}",
     )
-    k2.metric("Low Risk", f"{counts.get('Low', 0):,}")
-    k3.metric("Medium Risk", f"{counts.get('Medium', 0):,}")
-    k4.metric("High Risk", f"{counts.get('High', 0):,}")
+    k2.metric(
+        "Low Risk",
+        f"{counts.get('Low', 0):,}",
+    )
+    k3.metric(
+        "Medium Risk",
+        f"{counts.get('Medium', 0):,}",
+    )
+    k4.metric(
+        "High Risk",
+        f"{counts.get('High', 0):,}",
+    )
 
     st.divider()
 
@@ -1092,13 +1522,17 @@ elif page == "Employee Risk Explorer":
             "No employees match the selected filters."
         )
     else:
-        full_employee_risk_table(filtered_risk)
+        full_employee_risk_table(
+            filtered_risk
+        )
 
     st.download_button(
         "Download Filtered Employee Risk Details",
         data=filtered_risk.to_csv(index=False),
-        file_name="Filtered_Employee_Risk_Details.csv",
-        mime="text/csv"
+        file_name=(
+            "Filtered_Employee_Risk_Details.csv"
+        ),
+        mime="text/csv",
     )
 
     st.caption(
@@ -1108,6 +1542,7 @@ elif page == "Employee Risk Explorer":
         "not been recalculated."
     )
 
+
 # ==================================================
 # PAGE 3: LIVE ATTRITION PREDICTION
 # ==================================================
@@ -1115,6 +1550,7 @@ elif page == "Employee Risk Explorer":
 elif page == "Live Attrition Prediction":
 
     live_prediction_section()
+
 
 # ==================================================
 # PAGE 4: MODEL INSIGHTS
@@ -1130,32 +1566,57 @@ elif page == "Model Insights":
 
     c1, c2, c3, c4 = st.columns(4)
 
-    c1.metric("Test ROC AUC", "0.795")
-    c2.metric("Test Recall", "72.3%")
-    c3.metric("Test Precision", "37.0%")
-    c4.metric("Calibrated CV Brier", "0.098")
+    c1.metric(
+        "Test ROC AUC",
+        "0.795",
+    )
+    c2.metric(
+        "Test Recall",
+        "72.3%",
+    )
+    c3.metric(
+        "Test Precision",
+        "37.0%",
+    )
+    c4.metric(
+        "Calibrated CV Brier",
+        "0.098",
+    )
 
     st.subheader(
         "Cross-Validation Model Comparison"
     )
 
-    comparison = pd.DataFrame({
-        "Model": [
-            "Logistic Regression",
-            "Random Forest"
-        ],
-        "ROC AUC": [0.831, 0.808],
-        "Recall": [0.753, 0.463],
-        "F1 Score": [0.495, 0.496]
-    })
+    comparison = pd.DataFrame(
+        {
+            "Model": [
+                "Logistic Regression",
+                "Random Forest",
+            ],
+            "ROC AUC": [
+                0.831,
+                0.808,
+            ],
+            "Recall": [
+                0.753,
+                0.463,
+            ],
+            "F1 Score": [
+                0.495,
+                0.496,
+            ],
+        }
+    )
 
     st.dataframe(
         comparison,
         width="stretch",
-        hide_index=True
+        hide_index=True,
     )
 
-    st.subheader("Why Logistic Regression?")
+    st.subheader(
+        "Why Logistic Regression?"
+    )
 
     st.write(
         "Logistic Regression achieved stronger "
@@ -1164,7 +1625,9 @@ elif page == "Model Insights":
         "who may require retention attention."
     )
 
-    st.subheader("Held-Out Model Evaluation")
+    st.subheader(
+        "Held-Out Model Evaluation"
+    )
 
     st.write(
         "Of 294 test employees, 47 had left. "
@@ -1183,49 +1646,63 @@ elif page == "Model Insights":
         "from the model."
     )
 
-    # Restore the complete original chart
     predictor_ranking_chart()
 
     st.caption(
-        "The chart displays all 21 predictors with available "
-        "Power BI ranking scores. Department is the 22nd "
-        "model predictor but has no score in the original "
-        "ranking data. The trained model uses all 22."
+        "The chart displays all 21 predictors with "
+        "available Power BI ranking scores. Department "
+        "is the 22nd model predictor but has no score "
+        "in the original ranking data. The trained "
+        "model uses all 22."
     )
 
-    # Explicitly account for all 22 model predictors
     with st.expander(
         "View All 22 Model Predictors",
-        expanded=False
+        expanded=False,
     ):
         try:
-            _, model_features, _ = load_prediction_model()
+            _, model_features, _ = (
+                load_prediction_model()
+            )
 
-            score_lookup = dict(POWERBI_RANKING)
+            score_lookup = dict(
+                POWERBI_RANKING
+            )
 
-            predictor_details = pd.DataFrame({
-                "Predictor": model_features,
-                "Power BI Ranking Score": [
-                    score_lookup.get(feature)
-                    for feature in model_features
-                ]
-            })
+            predictor_details = pd.DataFrame(
+                {
+                    "Predictor": [
+                        display_name(feature)
+                        for feature in model_features
+                    ],
+                    "Power BI Ranking Score": [
+                        score_lookup.get(feature)
+                        for feature in model_features
+                    ],
+                }
+            )
 
             st.dataframe(
                 predictor_details,
                 width="stretch",
                 hide_index=True,
                 column_config={
-                    "Power BI Ranking Score": st.column_config.NumberColumn(
-                        "Power BI Ranking Score",
-                        help="Blank means no ranking score was provided."
+                    "Power BI Ranking Score": (
+                        st.column_config.NumberColumn(
+                            "Power BI Ranking Score",
+                            help=(
+                                "Blank means no ranking "
+                                "score was provided."
+                            ),
+                        )
                     )
-                }
+                },
             )
 
         except Exception as error:
             st.warning(
-                f"Unable to load the full predictor list: {error}"
+                "Unable to load the full predictor list: "
+                f"{error}"
             )
 
     st.subheader("Model Predictors")
@@ -1233,9 +1710,9 @@ elif page == "Model Insights":
     st.write(
         "The calibrated Logistic Regression model uses "
         "22 predictors. Key factors in the model ranking "
-        "include OverTime, StockOptionLevel, "
-        "YearsSinceLastPromotion, NumCompaniesWorked "
-        "and TotalWorkingYears."
+        "include Overtime, Stock Option Level, "
+        "Years Since Last Promotion, Number of Companies "
+        "Worked and Total Working Years."
     )
 
     st.caption(
@@ -1245,19 +1722,22 @@ elif page == "Model Insights":
 
     st.subheader("HR Recommendations")
 
-    st.markdown("""
+    st.markdown(
+        """
 1. Prioritise retention reviews in higher-attrition groups.
 2. Investigate overtime and workload patterns.
 3. Strengthen onboarding and career development.
 4. Combine model estimates with HR feedback and judgement.
 5. Pilot interventions and monitor retention outcomes.
-""")
+        """
+    )
 
     st.warning(
         "The dataset is synthetic. Real-world deployment "
         "requires validation, fairness assessment and "
         "appropriate governance."
     )
+
 
 # ==================================================
 # FOOTER
