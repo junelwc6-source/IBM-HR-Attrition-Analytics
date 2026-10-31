@@ -26,37 +26,30 @@ st.markdown("""
 .stApp {
     background-color: #F7F9FC;
 }
-
 .block-container {
     max-width: 100%;
     padding: 0.6rem 1rem 1rem;
 }
-
 h1 {
     font-size: 1.45rem !important;
     padding: 0 !important;
 }
-
 h2, h3 {
     font-size: 1rem !important;
     padding: 0.1rem 0 !important;
 }
-
 [data-testid="stVerticalBlock"] {
     gap: 0.35rem;
 }
-
 [data-testid="stMetric"] {
     background: white;
     border: 1px solid #E2E7EF;
     border-radius: 8px;
     padding: 0.5rem;
 }
-
 [data-testid="stMetricValue"] {
     font-size: 1.3rem;
 }
-
 [data-testid="stMetricLabel"] {
     font-size: 0.75rem;
 }
@@ -69,6 +62,7 @@ h2, h3 {
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
 @st.cache_data
 def load_data():
     historical = pd.read_csv(
@@ -78,6 +72,7 @@ def load_data():
         BASE_DIR / "HR_Attrition_Predictive_Risk.csv"
     )
     return historical, risk
+
 
 try:
     historical, risk = load_data()
@@ -102,6 +97,17 @@ risk["Risk_Level"] = (
 
 risk["Predicted_Probability"] = pd.to_numeric(
     risk["Predicted_Probability"],
+    errors="coerce"
+)
+
+# Use consistent employee identifiers for joining
+historical["EmployeeNumber"] = pd.to_numeric(
+    historical["EmployeeNumber"],
+    errors="coerce"
+)
+
+risk["EmployeeNumber"] = pd.to_numeric(
+    risk["EmployeeNumber"],
     errors="coerce"
 )
 
@@ -152,14 +158,13 @@ def attrition_chart(
             cliponaxis=False
         ))
 
+        max_rate = (
+            summary["Rate"].max()
+            if not summary.empty else 0
+        )
+
         fig.update_xaxes(
-            range=[
-                0,
-                max(
-                    45,
-                    summary["Rate"].max() * 1.25
-                )
-            ]
+            range=[0, max(45, max_rate * 1.25)]
         )
 
         if benchmark is not None:
@@ -182,14 +187,13 @@ def attrition_chart(
             cliponaxis=False
         ))
 
+        max_rate = (
+            summary["Rate"].max()
+            if not summary.empty else 0
+        )
+
         fig.update_yaxes(
-            range=[
-                0,
-                max(
-                    35,
-                    summary["Rate"].max() * 1.2
-                )
-            ]
+            range=[0, max(35, max_rate * 1.2)]
         )
 
         if benchmark is not None:
@@ -320,6 +324,11 @@ def employee_table(data, show_all=False):
         "Predicted_Probability": "Predicted Probability"
     })
 
+    if "Employee Number" in table.columns:
+        table["Employee Number"] = (
+            table["Employee Number"].astype("Int64")
+        )
+
     st.dataframe(
         table,
         use_container_width=True,
@@ -357,7 +366,14 @@ if page == "Integrated Dashboard":
         "EMPLOYEE ATTRITION & PREDICTIVE RISK DASHBOARD"
     )
 
-    # HISTORICAL FILTERS
+    # ----------------------------------------------
+    # SHARED FILTERS
+    # ----------------------------------------------
+
+    st.caption(
+        "Department, Gender and Age Group filters "
+        "apply to both historical and predictive analysis."
+    )
 
     f1, f2, f3 = st.columns(3)
 
@@ -371,7 +387,8 @@ if page == "Integrated Dashboard":
         selected_departments = st.multiselect(
             "Department",
             departments,
-            default=departments
+            default=departments,
+            key="main_department"
         )
 
     with f2:
@@ -384,7 +401,8 @@ if page == "Integrated Dashboard":
         selected_genders = st.multiselect(
             "Gender",
             genders,
-            default=genders
+            default=genders,
+            key="main_gender"
         )
 
     with f3:
@@ -395,11 +413,21 @@ if page == "Integrated Dashboard":
             "50 and above"
         ]
 
+        available_ages = [
+            age for age in age_order
+            if age in historical["AgeGroup"].unique()
+        ]
+
         selected_ages = st.multiselect(
             "Age Group",
-            age_order,
-            default=age_order
+            available_ages,
+            default=available_ages,
+            key="main_age"
         )
+
+    # ----------------------------------------------
+    # FILTER HISTORICAL DATA
+    # ----------------------------------------------
 
     filtered = historical[
         historical["Department"].isin(
@@ -419,24 +447,43 @@ if page == "Integrated Dashboard":
         )
         st.stop()
 
+    # ----------------------------------------------
+    # FILTER PREDICTIVE DATA USING SAME EMPLOYEES
+    # ----------------------------------------------
+
+    # The predictive dataset contains employees
+    # who stayed and already have risk predictions.
+    # Matching by EmployeeNumber ensures that all
+    # three top filters apply to both sections.
+
+    selected_employee_ids = (
+        filtered["EmployeeNumber"].dropna().unique()
+    )
+
+    shared_risk = risk[
+        risk["EmployeeNumber"].isin(
+            selected_employee_ids
+        )
+    ].copy()
+
+    # ----------------------------------------------
     # FIVE KPI CARDS
+    # ----------------------------------------------
 
     total = len(filtered)
-    left = int(filtered["Attrition_Flag"].sum())
+
+    left = int(
+        filtered["Attrition_Flag"].sum()
+    )
+
     rate = left / total * 100
 
     average_income = (
         filtered["MonthlyIncome"].mean()
     )
 
-    selected_risk = risk[
-        risk["EmployeeNumber"].isin(
-            filtered["EmployeeNumber"]
-        )
-    ]
-
     high_risk = int(
-        selected_risk["Risk_Level"]
+        shared_risk["Risk_Level"]
         .eq("High")
         .sum()
     )
@@ -470,7 +517,9 @@ if page == "Integrated Dashboard":
 
     st.divider()
 
+    # ----------------------------------------------
     # THREE MAIN SECTIONS
+    # ----------------------------------------------
 
     department_panel, history_panel, risk_panel = (
         st.columns(
@@ -479,9 +528,9 @@ if page == "Integrated Dashboard":
         )
     )
 
-    # ----------------------------------------------
+    # ==============================================
     # DEPARTMENT ATTRITION OVERVIEW
-    # ----------------------------------------------
+    # ==============================================
 
     with department_panel:
 
@@ -499,6 +548,9 @@ if page == "Integrated Dashboard":
             subset = filtered[
                 filtered["Department"] == department
             ]
+
+            if subset.empty:
+                continue
 
             stayed = int(
                 subset["Attrition_Flag"]
@@ -525,9 +577,9 @@ if page == "Integrated Dashboard":
             "Teal = Stayed | Grey = Left"
         )
 
-    # ----------------------------------------------
+    # ==============================================
     # HISTORICAL ATTRITION ANALYSIS
-    # ----------------------------------------------
+    # ==============================================
 
     with history_panel:
 
@@ -602,7 +654,6 @@ if page == "Integrated Dashboard":
         )
 
         # PROMOTION BAND
-        # Based on the Power BI screenshot
 
         with row2_left:
 
@@ -680,9 +731,9 @@ if page == "Integrated Dashboard":
             "historical attrition."
         )
 
-    # ----------------------------------------------
+    # ==============================================
     # PREDICTIVE RISK ANALYSIS
-    # ----------------------------------------------
+    # ==============================================
 
     with risk_panel:
 
@@ -690,34 +741,33 @@ if page == "Integrated Dashboard":
             "PREDICTIVE RISK ANALYSIS"
         )
 
-        risk_departments = sorted(
-            risk["Department"]
-            .dropna()
-            .unique()
+        st.caption(
+            "Uses the Department, Gender and "
+            "Age Group filters above."
         )
 
-        selected_risk_departments = st.multiselect(
-            "Risk Department",
-            risk_departments,
-            default=risk_departments
-        )
+        # No separate Risk Department filter.
+        # The predictive population is already
+        # restricted by the shared top filters.
 
         selected_levels = st.multiselect(
             "Risk Level",
             ["Low", "Medium", "High"],
-            default=["Low", "Medium", "High"]
+            default=["Low", "Medium", "High"],
+            key="main_risk_level"
         )
 
         employee_search = st.text_input(
             "Employee Number",
-            placeholder="Search employee ID"
+            placeholder="Search employee ID",
+            key="main_employee_search"
         )
 
-        filtered_risk = risk[
-            risk["Department"].isin(
-                selected_risk_departments
-            )
-            & risk["Risk_Level"].isin(
+        # Risk Level and Employee Number filters
+        # further narrow the shared risk population.
+
+        filtered_risk = shared_risk[
+            shared_risk["Risk_Level"].isin(
                 selected_levels
             )
         ].copy()
@@ -726,6 +776,7 @@ if page == "Integrated Dashboard":
 
             filtered_risk = filtered_risk[
                 filtered_risk["EmployeeNumber"]
+                .astype("Int64")
                 .astype(str)
                 .str.contains(
                     employee_search.strip(),
@@ -742,13 +793,19 @@ if page == "Integrated Dashboard":
             )
         )
 
-        donut_chart(
-            counts.values,
-            counts.index,
-            [TEAL, GOLD, RED],
-            len(filtered_risk),
-            height=215
-        )
+        if filtered_risk.empty:
+            st.info(
+                "No predicted employees match "
+                "the selected filters."
+            )
+        else:
+            donut_chart(
+                counts.values,
+                counts.index,
+                [TEAL, GOLD, RED],
+                len(filtered_risk),
+                height=215
+            )
 
         st.subheader(
             "Employee Risk Details"
@@ -757,8 +814,10 @@ if page == "Integrated Dashboard":
         employee_table(filtered_risk)
 
         st.caption(
-            "Predictive filters operate separately "
-            "from historical filters."
+            "High-Risk Employees KPI reflects "
+            "the top three filters. Risk Level "
+            "and Employee Number further filter "
+            "the predictive chart and table."
         )
 
 # ==================================================
@@ -801,13 +860,16 @@ elif page == "Employee Risk Explorer":
     f1, f2 = st.columns(2)
 
     with f1:
+
         selected_levels = st.multiselect(
             "Risk Category",
             ["Low", "Medium", "High"],
-            default=["Low", "Medium", "High"]
+            default=["Low", "Medium", "High"],
+            key="explorer_risk"
         )
 
     with f2:
+
         departments = sorted(
             risk["Department"]
             .dropna()
@@ -817,11 +879,13 @@ elif page == "Employee Risk Explorer":
         selected_departments = st.multiselect(
             "Department",
             departments,
-            default=departments
+            default=departments,
+            key="explorer_department"
         )
 
     search = st.text_input(
-        "Search Employee Number"
+        "Search Employee Number",
+        key="explorer_search"
     )
 
     filtered_risk = risk[
@@ -837,6 +901,7 @@ elif page == "Employee Risk Explorer":
 
         filtered_risk = filtered_risk[
             filtered_risk["EmployeeNumber"]
+            .astype("Int64")
             .astype(str)
             .str.contains(
                 search.strip(),
@@ -855,13 +920,18 @@ elif page == "Employee Risk Explorer":
 
     st.subheader("Risk Distribution")
 
-    donut_chart(
-        counts.values,
-        counts.index,
-        [TEAL, GOLD, RED],
-        len(filtered_risk),
-        height=260
-    )
+    if filtered_risk.empty:
+        st.info(
+            "No employees match the selected filters."
+        )
+    else:
+        donut_chart(
+            counts.values,
+            counts.index,
+            [TEAL, GOLD, RED],
+            len(filtered_risk),
+            height=260
+        )
 
     st.subheader("Employee Risk Details")
 
