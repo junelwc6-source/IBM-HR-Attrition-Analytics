@@ -364,8 +364,6 @@ The employee details table displays each employee's precomputed predicted attrit
 
 **Important:** Filtering employees does not recalculate their predicted probabilities. The predictions were generated using the calibrated Logistic Regression model with all 22 selected predictors.
 
-### Power BI Dashboard Screenshot
-
 ### Power BI Dashboard Screenshots
 
 **1. HR Employee Attrition Dashboard**
@@ -400,7 +398,7 @@ An interactive Streamlit web application was developed to complement the Power B
 | Integrated Dashboard | Explore historical attrition patterns and predictive risk summaries through interactive visualisations |
 | Employee Risk Explorer | Filter employee records and investigate precomputed attrition probabilities and risk categories |
 | Live Attrition Prediction | Enter employee characteristics to generate a new predicted attrition probability using the trained model |
-| Model Insights | Review model performance, predictor importance and key considerations when interpreting predictions |
+| Model Insights | Review model performance, predictor rankings and key considerations when interpreting predictions |
 
 ### Power BI vs Streamlit
 
