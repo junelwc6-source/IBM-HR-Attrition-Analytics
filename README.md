@@ -4,11 +4,11 @@
 
 # 📊 IBM HR Employee Attrition Analytics
 
-**Python • Machine Learning • Power BI • HR Retention Strategy**
+**Python • Machine Learning • Power BI • Streamlit • HR Analytics**
 
 > Understanding employee attrition, estimating future risk and supporting practical HR retention decisions.
 > 
-### 🌐 Live Interactive Dashboard
+### 🌐 Live Interactive Streamlit Application
 
 
 [Launch the HR Employee Attrition Analytics Dashboard](https://ibm-hr-attrition-analytics-h9hbananbldwcmri8d6uti.streamlit.app/)
@@ -56,11 +56,10 @@ The datasets were merged using `EmployeeNumber` as the common identifier.
 
 ### Prepared Datasets for Power BI
 
-Three prepared datasets are available in this GitHub repository:
+Two prepared datasets are available in this GitHub repository:
 
 - **IBM_HR_Attrition_Cleaned.csv:** The cleaned historical dataset containing all 1,470 employee records, used for descriptive analytics.
 - **HR_Attrition_Predictive_Risk.csv:** The predictive risk dataset containing 1,233 employees who stayed, including estimated attrition probabilities and risk categories.
-- **Top5_Model_Predictors.csv:** Model-level predictor importance summary for supporting analysis.
 
 These datasets are imported directly into Power BI to support the interactive dashboard.
 
@@ -85,7 +84,8 @@ These datasets are imported directly into Power BI to support the interactive da
 | Scikit-learn | Machine learning, calibration and model evaluation |
 | Google Colab | Python development environment |
 | GitHub | Project documentation and version control |
-| Power BI | Interactive HR analytics dashboard |
+| Power BI | Interactive dashboard for historical attrition analysis and exploration of precomputed employee risk |
+| Streamlit | Interactive web application for descriptive analytics, employee risk exploration, live attrition prediction and model insights |
 
 ## 6. 🧹 Data Preparation
 
@@ -199,22 +199,25 @@ Calibration was performed using the training dataset, while the held-out test da
 
 ### Important Predictive Factors
 
-An earlier cross-validated permutation importance analysis identified the following leading predictive factors:
+Permutation importance was used to assess the contribution of individual predictors to the calibrated Logistic Regression model's predictive performance.
 
-1. Total Working Years
-2. Overtime
-3. Job Role
-4. Business Travel
-5. Stock Option Level
-6. Monthly Income
+The **Top 10 predictors**, ranked using permutation importance on the held-out test dataset, were:
+
+1. Overtime
+2. Stock Option Level
+3. Years Since Last Promotion
+4. Number of Companies Worked
+5. Total Working Years
+6. Business Travel
 7. Job Satisfaction
-8. Years With Current Manager
-9. Years Since Last Promotion
-10. Job Involvement
+8. Job Involvement
+9. Job Role
+10. Training Times Last Year
 
-**Final calibrated-model check:** A separate permutation-importance calculation on the held-out test dataset ranked **Overtime** first, followed by **Stock Option Level**, **Years Since Last Promotion**, **Number of Companies Worked**, and **Total Working Years**. The ranking differs because the evaluation procedure and data differ. These should not be treated as interchangeable rankings.
+These predictors are included as interactive filters in the Power BI Employee Risk Details page, allowing users to explore employee characteristics alongside their precomputed predicted attrition probabilities and risk levels.
 
-Predictor importance describes how much model performance changes when a feature is disrupted; it does **not** establish causation or describe the influence of a factor on a particular employee.
+**Important:** Predictor importance indicates how much model performance changes when a feature is disrupted. It does not establish causation or explain why an individual employee may leave. The predictive model uses all 22 selected predictors, not only the Top 10 listed above.
+
 
 ## 9. 🎯 Employee Attrition Risk Study
 
@@ -334,40 +337,72 @@ Predictive risk scores should support workforce-level analysis and voluntary emp
 
 ## 12. 📊 Interactive Power BI Dashboard
 
-An interactive **single-page Power BI dashboard** brings together historical attrition and predictive risk analysis. It is designed to help HR move from overall workforce trends to individual employee risk review.
+An interactive Power BI report combines historical employee attrition analysis with predictive employee risk exploration to support HR decision-making.
 
-### Dashboard Overview
+The report allows HR users to identify historical attrition patterns, examine workforce risk distribution and investigate individual employee risk profiles.
+
+### Dashboard Features
 
 | Section | What HR Can Explore |
 |---|---|
-| **Department Attrition Overview** | Headcount and historical proportions of employees who stayed versus left across Sales, Human Resources, and Research & Development |
-| **Historical Attrition Analysis** | Attrition by job role, overtime, total working years, years since last promotion, and income group |
-| **Predictive Risk Analysis** | Low/Medium/High risk distribution and employee-level risk register |
-| **Interactive Filters** | Department, Gender, Age Group; plus table-specific Department, Employee Number and Risk Level filters |
+| Department Attrition Overview | Employee headcount, historical attrition rates and departmental comparisons |
+| Historical Attrition Analysis | Attrition patterns by job role, overtime, working experience, promotion history and income |
+| Predictive Risk Analysis | Distribution of Low, Medium and High predicted attrition risk among employees who stayed |
+| Employee Risk Details | Employee-level predicted attrition probabilities, risk categories and relevant employee characteristics |
+| Interactive Filters | Department, employee number, risk level and the Top 10 predictive factors |
 
-**Full-company snapshot:** 1,470 employees · 237 left · **16.1% attrition** · 1,233 stayed · **134 High Risk** among those who stayed.
+**Full-company snapshot:** 1,470 employees · 237 employees left · 16.1% historical attrition rate · 1,233 employees stayed · 134 employees classified as High Risk.
+
+### Employee Risk Exploration
+
+The Employee Risk Details page includes 10 interactive predictor filters, accessible through the **Show Predictor Filters / Hide Predictor Filters** buttons.
+
+These filters allow HR users to explore employees based on characteristics such as overtime, job satisfaction, working experience, business travel and promotion history.
+
+The employee details table displays each employee's precomputed predicted attrition probability and corresponding risk level.
+
+**Important:** Filtering employees does not recalculate their predicted probabilities. The predictions were generated using the calibrated Logistic Regression model with all 22 selected predictors.
 
 ### Power BI Dashboard Screenshot
 
-<a href="HR_Attrition_Dashboard.png">
-  <img src="HR_Attrition_Dashboard.png"
-       alt="Employee Attrition and Predictive Risk Dashboard"
-       width="100%">
-</a>
-
-*Click the dashboard image to open the full-size screenshot.*
+[View Power BI Dashboard Screenshot](HR_Attrition_Dashboard.png)
 
 ### How HR Can Use the Dashboard
 
-1. **Identify patterns:** Compare attrition rates across departments, job roles and employee groups.
-2. **Assess predicted risk:** View the distribution of model-estimated risk among employees who stayed.
-3. **Investigate employees:** Filter the Employee Risk Details table by Department, Employee Number and Risk Level.
-4. **Plan retention initiatives:** Combine analytical findings with employee feedback, workload reviews and HR judgement.
+1. **Identify historical patterns:** Examine attrition rates across departments, job roles and employee groups.
+2. **Assess workforce risk:** Review the distribution of predicted attrition risk among employees who stayed.
+3. **Explore employee profiles:** Use the interactive predictor filters to investigate employees with particular characteristics and review their predicted risk.
+4. **Support retention planning:** Combine descriptive findings, predicted risk estimates and HR judgement to identify areas for further investigation.
 
-**Interpretation:** Historical attrition percentages describe observed departures. Predictive probabilities estimate risk and do not guarantee resignation. Employee-level predictions should support appropriate HR review, not automatic employment decisions.
+**Interpretation:** Historical attrition rates describe observed employee departures, while predicted probabilities estimate potential attrition risk. These estimates should support HR review rather than automatic employment decisions.
 
+## 13. 🌐 Interactive Streamlit Application
 
-## 13. ⚠️ Project Limitations
+An interactive Streamlit web application was developed to complement the Power BI report, providing users with access to descriptive analytics, predictive risk exploration, live attrition prediction and model insights.
+
+**[Launch the Interactive HR Attrition Analytics Application](https://ibm-hr-attrition-analytics-h9hbananbldwcmri8d6uti.streamlit.app/)**
+
+### Application Features
+
+| Page | Key Features |
+|---|---|
+| Integrated Dashboard | Explore historical attrition patterns and predictive risk summaries through interactive visualisations |
+| Employee Risk Explorer | Filter employee records and investigate precomputed attrition probabilities and risk categories |
+| Live Attrition Prediction | Enter employee characteristics to generate a new predicted attrition probability using the trained model |
+| Model Insights | Review model performance, predictor importance and key considerations when interpreting predictions |
+
+### Power BI vs Streamlit
+
+The two platforms serve complementary purposes:
+
+- **Power BI:** Supports historical attrition analysis, workforce monitoring and exploration of precomputed employee risk through interactive dashboards.
+- **Streamlit:** Extends the analysis with a web-based interface for employee risk exploration, model interpretation and live prediction using user-provided inputs.
+
+The predictive model uses 22 selected employee characteristics. Live predictions are generated from the trained model rather than by filtering existing employee records.
+
+**Note:** This application uses a synthetic educational dataset. Predictions are intended for analytical demonstration and should not be used as the sole basis for employment decisions.
+
+## 14. ⚠️ Project Limitations
 
 - The IBM HR dataset is synthetic and may not reflect actual organisational behaviour.
 - Predictive results are based on a limited held-out test dataset.
@@ -378,7 +413,7 @@ An interactive **single-page Power BI dashboard** brings together historical att
 - Predictive models require further validation, calibration assessment and bias review before real-world use.
 - Employee risk predictions should not be used as the sole basis for individual employment decisions.
 
-## 14. ✅ Conclusion
+## 15. ✅ Conclusion
 
 This project demonstrates how descriptive and predictive analytics can support HR decision-making.
 
@@ -390,7 +425,7 @@ The findings provide a foundation for HR retention strategies, ongoing performan
 
 The ultimate business objective is **not simply to predict employee departures, but to help HR identify retention concerns early and evaluate actions that may improve employee retention**.
 
-## 15. 📓 Python Notebook
+## 16. 📓 Python Notebook
 
 [View the Google Colab Notebook on GitHub](IBM_HR_Attrition_Capstone.ipynb)
 
