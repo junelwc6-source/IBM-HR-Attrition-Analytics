@@ -633,6 +633,7 @@ page = st.sidebar.radio(
     [
         "Integrated Dashboard",
         "Employee Risk Explorer",
+        "Live Attrition Prediction",
         "Model Insights"
     ]
 )
@@ -1050,13 +1051,12 @@ elif page == "Employee Risk Explorer":
         "not been recalculated."
     )
 
-    # NEW: LIVE MODEL DEPLOYMENT
+# ==================================================
+# PAGE 3: LIVE ATTRITION PREDICTION
+# ==================================================
 
+elif page == "Live Attrition Prediction":
     live_prediction_section()
-
-# ==================================================
-# PAGE 3: MODEL INSIGHTS
-# ==================================================
 
 elif page == "Model Insights":
 
